@@ -35,14 +35,40 @@
         "label": "Kennung"
       },
       "mode": {
-        "local": "Visuelle Konfiguration",
-        "local-tooltip": "Visuelle Konfiguration vorübergehend nicht unterstützt",
+        "mcp": "MCP-Plugin",
+        "mcpExp": "Experimentell",
         "url": "Online-Link"
       },
       "name": {
         "desc": "Plugin-Titel",
         "label": "Titel",
         "placeholder": "Suchmaschine"
+      }
+    },
+    "mcp": {
+      "args": {
+        "label": "Befehlsparameter"
+      },
+      "command": {
+        "label": "Befehl"
+      },
+      "endpoint": {
+        "desc": "Geben Sie die Adresse Ihres MCP Streamable HTTP Servers ein",
+        "label": "MCP Endpoint-URL"
+      },
+      "identifier": {
+        "desc": "Geben Sie Ihrem MCP-Plugin einen Namen, der englische Zeichen verwenden muss",
+        "invalid": "Es dürfen nur englische Zeichen, Zahlen, - und _ verwendet werden",
+        "label": "MCP-Plugin-Name",
+        "placeholder": "z.B.: my-mcp-plugin"
+      },
+      "type": {
+        "desc": "Wählen Sie die Kommunikationsart des MCP-Plugins, die Webversion unterstützt nur Streamable HTTP",
+        "label": "MCP-Plugin-Typ"
+      },
+      "url": {
+        "desc": "Geben Sie Ihre MCP-Server-Streamable-HTTP-Adresse ein, die nicht mit /sse endet",
+        "label": "HTTP Endpoint-URL"
       }
     },
     "meta": {

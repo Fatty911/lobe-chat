@@ -35,14 +35,45 @@
         "label": "المعرف"
       },
       "mode": {
-        "local": "تكوين بصري",
-        "local-tooltip": "غير مدعوم مؤقتًا",
+        "mcp": "مكون MCP",
+        "mcpExp": "تجريبي",
         "url": "رابط عبر الإنترنت"
       },
       "name": {
         "desc": "عنوان البرنامج المساعد",
         "label": "العنوان",
         "placeholder": "محرك البحث"
+      }
+    },
+    "mcp": {
+      "args": {
+        "desc": "قائمة المعلمات المرسلة إلى أمر STDIO",
+        "label": "معلمات الأمر",
+        "placeholder": "على سبيل المثال: --port 8080 --debug",
+        "tooltip": "اضغط على Enter بعد إدخال المعلمات أو استخدم الفاصلة/المسافة للفصل"
+      },
+      "command": {
+        "desc": "الملف القابل للتنفيذ أو البرنامج النصي المستخدم لبدء ملحق MCP STDIO",
+        "label": "الأمر",
+        "placeholder": "على سبيل المثال: python main.py أو /path/to/executable"
+      },
+      "endpoint": {
+        "desc": "أدخل عنوان خادم MCP Streamable HTTP الخاص بك",
+        "label": "عنوان URL لنقطة نهاية MCP"
+      },
+      "identifier": {
+        "desc": "حدد اسمًا لملحق MCP الخاص بك، يجب أن يكون باستخدام أحرف إنجليزية",
+        "invalid": "يمكنك إدخال أحرف إنجليزية، أرقام، والرمزين - و _ فقط",
+        "label": "اسم ملحق MCP",
+        "placeholder": "على سبيل المثال: my-mcp-plugin"
+      },
+      "type": {
+        "desc": "اختر طريقة الاتصال لملحق MCP، النسخة الويب تدعم فقط Streamable HTTP",
+        "label": "نوع ملحق MCP"
+      },
+      "url": {
+        "desc": "أدخل عنوان HTTP القابل للبث لخادم MCP الخاص بك، ولا ينتهي بـ /sse",
+        "label": "عنوان URL لنقطة نهاية HTTP"
       }
     },
     "meta": {
