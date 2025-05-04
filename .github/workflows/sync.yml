@@ -7,7 +7,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '0 */5 * * *' # every 5 hours
+    - cron: '0 */3 * * *' # every 3 hours
   workflow_dispatch:
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
     if: ${{ github.event.repository.fork }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@main
 
 
       - name: Sync upstream changes
@@ -32,7 +32,7 @@ jobs:
 
       - name: Sync check
         if: failure()
-        uses: actions-cool/issues-helper@v3
+        uses: actions-cool/issues-helper@main
         with:
           actions: 'create-issue'
           title: '🚨 同步失败 | Sync Fail'
