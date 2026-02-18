@@ -53,7 +53,7 @@ const AgentConfig = memo(() => {
 
   return (
     <ConfigLayout
-      expandedHeight={200}
+      expandedHeight={120}
       headerStyle={{ cursor: 'pointer' }}
       sessionId={sessionId}
       title={<Header />}

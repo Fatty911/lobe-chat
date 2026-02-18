@@ -60,7 +60,7 @@ const ConfigLayout = memo<ConfigLayoutProps>(
 
     const computedStyle: CSSProperties = expanded
       ? {
-          minHeight: 232,
+          minHeight: 140,
           opacity: 1,
           ...(expandedHeight !== undefined ? { maxHeight: expandedHeight } : {}),
         }
