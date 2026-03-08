@@ -18,6 +18,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.ACTION_WRITE }}
 
       - name: Clean issue notice
         uses: actions-cool/issues-helper@v3
