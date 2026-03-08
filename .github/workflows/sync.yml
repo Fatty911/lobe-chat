@@ -30,12 +30,31 @@ jobs:
       - name: Sync upstream changes
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        continue-on-error: true
         with:
           upstream_sync_repo: lobehub/lobehub
           upstream_sync_branch: main
           target_sync_branch: main
           target_repo_token: ${{ secrets.ACTION_WRITE }}
           test_mode: false
+
+      - name: Setup Node.js
+        if: steps.sync.outcome == 'failure'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Resolve conflicts with AI
+        if: steps.sync.outcome == 'failure'
+        env:
+          BLTCY_PROXY_URL: ${{ secrets.BLTCY_PROXY_URL }}
+          BLTCY_API_KEY: ${{ secrets.BLTCY_API_KEY }}
+        run: |
+          node .github/scripts/resolve-conflicts.js
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -m "🔀 chore: auto-resolve merge conflicts with AI"
+          git push origin main
 
       - name: Sync check
         if: failure()
