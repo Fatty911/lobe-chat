@@ -10,6 +10,7 @@ import {
   LucideCopy,
   LucidePlus,
   MoreVertical,
+  Pen,
   Pin,
   PinOff,
   Trash,
@@ -35,12 +36,14 @@ interface ActionProps {
   group: string | undefined;
   id: string;
   openCreateGroupModal: () => void;
+  openRenameModal?: () => void;
   parentType: 'agent' | 'group';
   setOpen: (open: boolean) => void;
 }
 
-const Actions = memo<ActionProps>(({ group, id, openCreateGroupModal, parentType, setOpen }) => {
-  const { t } = useTranslation('chat');
+const Actions = memo<ActionProps>(
+  ({ group, id, openCreateGroupModal, openRenameModal, parentType, setOpen }) => {
+    const { t } = useTranslation('chat');
 
   const openAgentInNewWindow = useGlobalStore((s) => s.openAgentInNewWindow);
 
@@ -83,6 +86,19 @@ const Actions = memo<ActionProps>(({ group, id, openCreateGroupModal, parentType
               }
             },
           },
+          ...(parentType === 'agent' && openRenameModal
+            ? [
+                {
+                  icon: <Icon icon={Pen} />,
+                  key: 'rename',
+                  label: t('rename', { ns: 'common' }),
+                  onClick: ({ domEvent }: { domEvent: Event }) => {
+                    domEvent.stopPropagation();
+                    openRenameModal();
+                  },
+                },
+              ]
+            : []),
           {
             icon: <Icon icon={LucideCopy} />,
             key: 'duplicate',
@@ -178,7 +194,7 @@ const Actions = memo<ActionProps>(({ group, id, openCreateGroupModal, parentType
           },
         ] as ItemType[]
       ).filter(Boolean),
-    [id, pin, openAgentInNewWindow],
+    [id, pin, openAgentInNewWindow, openRenameModal, parentType],
   );
 
   return (

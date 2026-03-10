@@ -18,6 +18,7 @@ import { type LobeGroupSession } from '@/types/session';
 
 import ListItem from '../../ListItem';
 import CreateGroupModal from '../../Modals/CreateGroupModal';
+import RenameAgentModal from '../../Modals/RenameAgentModal';
 import Actions from './Actions';
 
 interface SessionItemProps {
@@ -27,6 +28,7 @@ interface SessionItemProps {
 const SessionItem = memo<SessionItemProps>(({ id }) => {
   const [open, setOpen] = useState(false);
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
+  const [renameAgentModalOpen, setRenameAgentModalOpen] = useState(false);
 
   const openAgentInNewWindow = useGlobalStore((s) => s.openAgentInNewWindow);
 
@@ -80,11 +82,14 @@ const SessionItem = memo<SessionItemProps>(({ id }) => {
         group={group}
         id={id}
         openCreateGroupModal={() => setCreateGroupModalOpen(true)}
+        openRenameModal={
+          sessionType === 'agent' ? () => setRenameAgentModalOpen(true) : undefined
+        }
         parentType={sessionType}
         setOpen={setOpen}
       />
     ),
-    [group, id],
+    [group, id, sessionType],
   );
 
   const addon = useMemo(
@@ -150,6 +155,13 @@ const SessionItem = memo<SessionItemProps>(({ id }) => {
         open={createGroupModalOpen}
         onCancel={() => setCreateGroupModalOpen(false)}
       />
+      {sessionType === 'agent' && (
+        <RenameAgentModal
+          id={id}
+          open={renameAgentModalOpen}
+          onCancel={() => setRenameAgentModalOpen(false)}
+        />
+      )}
     </>
   );
 }, shallow);
