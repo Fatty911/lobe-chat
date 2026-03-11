@@ -71,8 +71,14 @@ const Actions = memo<ActionProps>(
     const isDefault = group === SessionDefaultGroup.Default;
 
     const items = useMemo(
-      () =>
-        (
+      () => {
+        console.log('[Actions Debug]', {
+          id,
+          parentType,
+          hasOpenRenameModal: !!openRenameModal,
+          condition: parentType === 'agent' && !!openRenameModal,
+        });
+        return (
           [
             {
               icon: <Icon icon={pin ? PinOff : Pin} />,
@@ -193,7 +199,8 @@ const Actions = memo<ActionProps>(
               },
             },
           ] as ItemType[]
-        ).filter(Boolean),
+        ).filter(Boolean);
+      },
       [id, pin, openAgentInNewWindow, openRenameModal, parentType],
     );
 
