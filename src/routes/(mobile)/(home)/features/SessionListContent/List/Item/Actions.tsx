@@ -44,13 +44,6 @@ interface ActionProps {
 const Actions = memo<ActionProps>(
   ({ group, id, openCreateGroupModal, openRenameModal, parentType, setOpen }) => {
     const { t } = useTranslation('chat');
-    
-    // 强制测试 - 只在第一次渲染时 alert
-    if (typeof window !== 'undefined' && !(window as any).__actionsTestShown) {
-      (window as any).__actionsTestShown = true;
-      alert('Actions 组件已加载！版本：5332cca2a');
-    }
-    console.log('=== Actions Component Rendered ===', { id, parentType, openRenameModal });
 
     const openAgentInNewWindow = useGlobalStore((s) => s.openAgentInNewWindow);
 
@@ -78,14 +71,8 @@ const Actions = memo<ActionProps>(
     const isDefault = group === SessionDefaultGroup.Default;
 
     const items = useMemo(
-      () => {
-        console.log('[Actions Debug]', {
-          id,
-          parentType,
-          hasOpenRenameModal: !!openRenameModal,
-          condition: parentType === 'agent' && !!openRenameModal,
-        });
-        return (
+      () =>
+        (
           [
             {
               icon: <Icon icon={pin ? PinOff : Pin} />,
@@ -99,19 +86,19 @@ const Actions = memo<ActionProps>(
                 }
               },
             },
-            {
-              icon: <Icon icon={Pen} />,
-              key: 'rename',
-              label: t('rename', { ns: 'common' }),
-              onClick: ({ domEvent }: { domEvent: Event }) => {
-                domEvent.stopPropagation();
-                if (openRenameModal) {
-                  openRenameModal();
-                } else {
-                  alert('openRenameModal is undefined');
-                }
-              },
-            },
+            ...(parentType === 'agent' && openRenameModal
+              ? [
+                  {
+                    icon: <Icon icon={Pen} />,
+                    key: 'rename',
+                    label: t('rename', { ns: 'common' }),
+                    onClick: ({ domEvent }: { domEvent: Event }) => {
+                      domEvent.stopPropagation();
+                      openRenameModal();
+                    },
+                  },
+                ]
+              : []),
             {
               icon: <Icon icon={LucideCopy} />,
               key: 'duplicate',

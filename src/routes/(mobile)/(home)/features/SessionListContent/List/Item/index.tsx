@@ -37,7 +37,7 @@ const SessionItem = memo<SessionItemProps>(({ id }) => {
     operationSelectors.isAgentRuntimeRunning(s) && id === s.activeAgentId,
   ]);
 
-  const [pin, title, avatar, avatarBackground, updateAt, members, model, group, sessionType] =
+  const [pin, title, avatar, avatarBackground, updateAt, members, model, group, sessionType, agentId] =
     useSessionStore((s) => {
       const session = sessionSelectors.getSessionById(id)(s);
       const meta = session.meta;
@@ -52,6 +52,7 @@ const SessionItem = memo<SessionItemProps>(({ id }) => {
         session.type === 'agent' ? (session as any).model : undefined,
         session?.group,
         session.type,
+        session.type === 'agent' ? (session as any).config?.id : undefined,
       ];
     });
 
@@ -155,9 +156,9 @@ const SessionItem = memo<SessionItemProps>(({ id }) => {
         open={createGroupModalOpen}
         onCancel={() => setCreateGroupModalOpen(false)}
       />
-      {sessionType === 'agent' && (
+      {sessionType === 'agent' && agentId && (
         <RenameAgentModal
-          id={id}
+          id={agentId}
           open={renameAgentModalOpen}
           onCancel={() => setRenameAgentModalOpen(false)}
         />
