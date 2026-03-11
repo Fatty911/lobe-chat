@@ -92,19 +92,19 @@ const Actions = memo<ActionProps>(
                 }
               },
             },
-            ...(parentType === 'agent' && openRenameModal
-              ? [
-                  {
-                    icon: <Icon icon={Pen} />,
-                    key: 'rename',
-                    label: t('rename', { ns: 'common' }),
-                    onClick: ({ domEvent }: { domEvent: Event }) => {
-                      domEvent.stopPropagation();
-                      openRenameModal();
-                    },
-                  },
-                ]
-              : []),
+            {
+              icon: <Icon icon={Pen} />,
+              key: 'rename',
+              label: t('rename', { ns: 'common' }),
+              onClick: ({ domEvent }: { domEvent: Event }) => {
+                domEvent.stopPropagation();
+                if (openRenameModal) {
+                  openRenameModal();
+                } else {
+                  alert('openRenameModal is undefined');
+                }
+              },
+            },
             {
               icon: <Icon icon={LucideCopy} />,
               key: 'duplicate',
