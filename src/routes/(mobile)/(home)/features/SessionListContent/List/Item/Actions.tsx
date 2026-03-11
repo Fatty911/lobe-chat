@@ -193,8 +193,7 @@ const Actions = memo<ActionProps>(
               },
             },
           ] as ItemType[]
-        ).filter(Boolean);
-      },
+        ).filter(Boolean),
       [id, pin, openAgentInNewWindow, openRenameModal, parentType],
     );
 
