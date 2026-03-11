@@ -45,7 +45,11 @@ const Actions = memo<ActionProps>(
   ({ group, id, openCreateGroupModal, openRenameModal, parentType, setOpen }) => {
     const { t } = useTranslation('chat');
     
-    // 强制测试日志
+    // 强制测试 - 只在第一次渲染时 alert
+    if (typeof window !== 'undefined' && !(window as any).__actionsTestShown) {
+      (window as any).__actionsTestShown = true;
+      alert('Actions 组件已加载！版本：5332cca2a');
+    }
     console.log('=== Actions Component Rendered ===', { id, parentType, openRenameModal });
 
     const openAgentInNewWindow = useGlobalStore((s) => s.openAgentInNewWindow);
