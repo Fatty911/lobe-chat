@@ -44,6 +44,9 @@ interface ActionProps {
 const Actions = memo<ActionProps>(
   ({ group, id, openCreateGroupModal, openRenameModal, parentType, setOpen }) => {
     const { t } = useTranslation('chat');
+    
+    // 强制测试日志
+    console.log('=== Actions Component Rendered ===', { id, parentType, openRenameModal });
 
     const openAgentInNewWindow = useGlobalStore((s) => s.openAgentInNewWindow);
 
