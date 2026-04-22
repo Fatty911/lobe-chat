@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opencode.ai/schema.json",
+  "model": "deepseek/deepseek-chat",
+  "providers": {
+    "deepseek": {
+      "baseURL": "https://api.deepseek.com",
+      "apiKey": "${DEEPSEEK_API_KEY}"
+    },
+    "openai": {
+      "baseURL": "https://api.openai.com/v1",
+      "apiKey": "${OPENAI_API_KEY}"
+    },
+    "zhipu": {
+      "baseURL": "https://open.bigmodel.cn/api/paas/v4",
+      "apiKey": "${ZHIPU_API_KEY}"
+    },
+    "moonshot": {
+      "baseURL": "https://api.moonshot.cn/v1",
+      "apiKey": "${MOONSHOT_API_KEY}"
+    },
+    "siliconflow": {
+      "baseURL": "https://api.siliconflow.cn/v1",
+      "apiKey": "${SILICONFLOW_API_KEY}"
+    }
+  },
+  "fallbackModels": [
+    "openai/gpt-4o",
+    "zhipu/glm-4-plus",
+    "moonshot/moonshot-v1-8k"
+  ],
+  "rules": {
+    "maxFilesPerCommit": 50,
+    "maxLinesPerCommit": 10000,
+    "requireTests": false,
+    "autoCommit": false
+  }
+}
