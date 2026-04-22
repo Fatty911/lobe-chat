@@ -98,3 +98,56 @@ cd packages/[package-name] && bunx vitest run --silent='passed-only' '[file-path
 All AI development skills are available in `.agents/skills/` directory and auto-loaded by Claude Code when relevant.
 
 **IMPORTANT**: When reviewing PRs or code diffs, ALWAYS read `.agents/skills/code-review/SKILL.md` first.
+
+---
+
+## 🤖 全局要求（所有 AI Agent 必读）
+
+> ⚠️ **所有操作此项目的 Agent（包括 OpenCode、OhMyOpenCode、Claude Code 等）必须遵守以下规则。**
+> 工作流中通过 OpenCode/OMO 调用大模型时，必须先读取本文件的完整内容。
+
+### 一、语言规范
+- **所有回复使用中文**，除非用户明确要求其他语言。
+- 代码注释使用英文，文档和交互信息使用中文。
+
+### 二、代码修改与提交
+
+| 规则 | 说明 |
+|------|------|
+| **提交前语法校验** | 每次修改代码后必须运行 `bun run type-check` 或 `pnpm lint` 确保无语法错误 |
+| **临时文件清理** | 调试产生的临时文件（`*.log`、`*.tmp` 等）测试完成后必须删除 |
+| **文档同步更新** | 新增功能或修改结构时，必须同步更新 README 和 AGENTS.md |
+| **Git Commit 规范** | 使用 gitmoji 前缀，如 `✨ feat:`、`🐛 fix:`、`📝 docs:` |
+
+### 三、工作流 AI 调用规则
+
+| 规则 | 说明 |
+|------|------|
+| **优先读取 AGENTS.md** | 工作流通过 OpenCode/OMO 调用 AI 时，必须先读取本项目 AGENTS.md |
+| **冲突解决策略** | 上游同步冲突时，保留上游重要更新，同时保留本地定制（如工作流中的 AI 配置） |
+| **安全规则** | 参考 `.claude/prompts/security-rules.md`，禁止泄露任何 Token/密钥 |
+
+### 四、测试与部署
+
+| 规则 | 说明 |
+|------|------|
+| **单元测试** | 推送前确保测试通过：`bunx vitest run --silent='passed-only'` |
+| **构建验证** | 修改后必须验证构建成功：`bun run build` |
+| **禁止 force push** | 除非用户明确要求，否则禁止使用 `git push --force` |
+
+### 五、关键文件速查
+
+| 文件 | 用途 |
+|------|------|
+| `AGENTS.md` | AI Agent 全局约束（本文件）|
+| `.claude/prompts/security-rules.md` | Claude 安全规则 |
+| `.github/workflows/sync-upstream.yml` | 上游同步 + AI 冲突解决 |
+| `.github/workflows/claude.yml` | Claude Code 工作流 |
+| `custom_scripts/resolve_upstream_conflicts.py` | Python AI 冲突解决脚本 |
+| `custom_scripts/pick_best_model.py` | 模型选择脚本 |
+| `opencode.json` | OpenCode 配置 |
+
+---
+
+**最后更新**: 2026-04-22
+**维护者**: Fatty911 + OpenCode Agent
