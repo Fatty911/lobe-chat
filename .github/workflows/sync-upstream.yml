@@ -130,9 +130,17 @@ jobs:
           git reset --hard origin/main
           git clean -fd
           
+          # 显示当前幻觉评分
+          echo "=== 📊 当前模型幻觉评分 ==="
+          python custom_scripts/pick_best_model.py --show-scores
+          
+          # 选择最佳模型（考虑幻觉评分）
           BEST_MODEL=$(python custom_scripts/pick_best_model.py)
           SMALL_MODEL=$(python custom_scripts/pick_best_model.py --small)
           echo "Track 3 选定模型: $BEST_MODEL (轻量: $SMALL_MODEL)"
+          
+          # 保存模型到文件，供后续步骤使用
+          echo "BEST_MODEL=$BEST_MODEL" >> $GITHUB_ENV
           
           if [ "$BEST_MODEL" = "NO_MODEL_AVAILABLE" ]; then
             echo "::error::无可用模型，Track 3 终止"
@@ -164,6 +172,8 @@ jobs:
           
           if grep -qi "ProviderModelNotFoundError\|Error: Model not found\|session.error\|UnknownError" opencode_output.log; then
             echo "::warning::oh-my-opencode 运行异常，准备 fallback..."
+            # 记录模型错误
+            python custom_scripts/pick_best_model.py --record "$BEST_MODEL" "model_error"
           else
             FIX_SUCCEEDED=true
           fi
@@ -173,6 +183,8 @@ jobs:
             opencode run --model "$BEST_MODEL" "$AGENTS_PROMPT\n\n解决上游同步的合并冲突。智能合并，保留重要更新。修复后提交（提交信息请带上模型来源: $BEST_MODEL）。退出。" 2>&1 | tee opencode_output.log || true
             if ! grep -qi "ProviderModelNotFoundError\|Error: Model not found\|session.error\|UnknownError" opencode_output.log; then
               FIX_SUCCEEDED=true
+            else
+              python custom_scripts/pick_best_model.py --record "$BEST_MODEL" "model_error"
             fi
           fi
           
@@ -189,6 +201,8 @@ jobs:
           git add .
           if git diff --cached --quiet; then
             echo "::error::AI 运行完成但未产生任何代码更改"
+            # 记录幻觉：无变更
+            python custom_scripts/pick_best_model.py --record "$BEST_MODEL" "no_changes"
             exit 1
           fi
 
@@ -200,6 +214,8 @@ jobs:
           echo "变更文件数: $FILE_COUNT (上限: $MAX_FILES_PER_COMMIT)"
           if [ $FILE_COUNT -gt $MAX_FILES_PER_COMMIT ]; then
             echo "::error::🚨 疑似AI幻觉！变更文件数($FILE_COUNT)超过上限($MAX_FILES_PER_COMMIT)，拒绝提交"
+            # 记录幻觉：文件数过多
+            python custom_scripts/pick_best_model.py --record "$BEST_MODEL" "too_many_files" "{\"file_count\": $FILE_COUNT}"
             git checkout -- .
             git clean -fd
             exit 1
@@ -210,6 +226,8 @@ jobs:
           echo "新增行数: $LINE_COUNT (上限: $MAX_LINES_PER_COMMIT)"
           if [ "$LINE_COUNT" -gt $MAX_LINES_PER_COMMIT ]; then
             echo "::error::🚨 疑似AI幻觉！新增行数($LINE_COUNT)超过上限($MAX_LINES_PER_COMMIT)，拒绝提交"
+            # 记录幻觉：行数过多
+            python custom_scripts/pick_best_model.py --record "$BEST_MODEL" "too_many_lines" "{\"line_count\": $LINE_COUNT}"
             git checkout -- .
             git clean -fd
             exit 1
@@ -219,6 +237,8 @@ jobs:
           SUSPICIOUS_FILES=$(git diff --cached --name-only | grep -E '\.env|\.pem|\.key|credentials|secrets' || true)
           if [ -n "$SUSPICIOUS_FILES" ]; then
             echo "::error::🚨 疑似AI幻觉！检测到敏感文件变更: $SUSPICIOUS_FILES"
+            # 记录幻觉：敏感文件
+            python custom_scripts/pick_best_model.py --record "$BEST_MODEL" "sensitive_files" "{\"files\": \"$SUSPICIOUS_FILES\"}"
             git checkout -- .
             git clean -fd
             exit 1
@@ -226,9 +246,10 @@ jobs:
 
           # === 推送前语法校验 ===
           echo "=== 🔍 推送前语法校验 ==="
-          python custom_scripts/validate_syntax.py
-          if [ $? -ne 0 ]; then
+          if ! python custom_scripts/validate_syntax.py; then
             echo "::error::语法校验失败，拒绝推送"
+            # 记录幻觉：语法错误
+            python custom_scripts/pick_best_model.py --record "$BEST_MODEL" "syntax_error"
             git checkout -- .
             git clean -fd
             exit 1
@@ -236,11 +257,41 @@ jobs:
           echo "✅ 语法校验通过"
           
           git commit -m "🔀 chore: auto-resolve upstream merge conflicts with OpenCode (Model: $BEST_MODEL)"
+          
+          # 提交幻觉评分文件（如果有更新）
+          if [ -f ".ai_hallucination_scores.json" ]; then
+            git add .ai_hallucination_scores.json
+            git commit --amend --no-edit || true
+          fi
+          
           git remote set-url origin https://${ACTION_WRITE}@github.com/${{ github.repository }}.git
           git pull --rebase origin main || true
           git push origin HEAD:main || { echo "::error::Push failed"; exit 1; }
           
           echo "Track 3 修复成功并已推送"
+          echo "FIX_SUCCEEDED=true" >> $GITHUB_ENV
+
+      # ===== 幻觉评分同步 =====
+      - name: Sync hallucination scores
+        if: always() && env.BEST_MODEL != ''
+        run: |
+          echo "=== 📊 同步幻觉评分 ==="
+          if [ -f ".ai_hallucination_scores.json" ]; then
+            echo "当前评分状态:"
+            python custom_scripts/pick_best_model.py --show-scores
+            
+            # 如果有变更，提交评分文件
+            if git diff --quiet .ai_hallucination_scores.json 2>/dev/null; then
+              echo "评分文件无变更"
+            else
+              echo "提交更新的评分文件..."
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add .ai_hallucination_scores.json
+              git commit -m "📊 chore: update AI hallucination scores"
+              git push origin HEAD:main || true
+            fi
+          fi
 
       - name: Sync check
         if: failure()
