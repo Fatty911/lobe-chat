@@ -1,4 +1,5 @@
 name: Upstream Sync with AI Conflict Resolver
+run-name: "Sync upstream lobehub/lobehub → ${{ github.repository }}"
 
 permissions:
   contents: write
@@ -29,17 +30,57 @@ jobs:
           actions: 'close-issues'
           labels: '🚨 Sync Fail'
 
-      - name: Track 1 - Sync upstream changes
+      - name: Track 1 - Fetch upstream and attempt sync
         id: track1
-        uses: aormsby/Fork-Sync-With-Upstream-action@main
-        continue-on-error: true
-        with:
-          upstream_sync_repo: lobehub/lobehub
-          upstream_sync_branch: main
-          target_sync_branch: main
-          target_repo_token: ${{ secrets.ACTION_WRITE }}
-          test_mode: false
+        env:
+          ACTION_WRITE: ${{ secrets.ACTION_WRITE }}
+        run: |
+          set -euo pipefail
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add upstream remote
+          git remote add upstream https://github.com/lobehub/lobehub.git || true
+          git fetch upstream main
+          
+          echo "Local main HEAD:  $(git rev-parse main)"
+          echo "Upstream HEAD:    $(git rev-parse upstream/main)"
+          
+          # Check if already up-to-date
+          if [ "$(git rev-parse main)" = "$(git rev-parse upstream/main)" ]; then
+            echo "✅ Already up-to-date with upstream"
+            exit 0
+          fi
+          
+          # Check if fast-forward is possible (local has no extra commits)
+          if git merge-base --is-ancestor main upstream/main; then
+            echo "🚀 Fast-forward possible, merging..."
+            git checkout main
+            git merge --ff-only upstream/main
+            echo "${ACTION_WRITE}" | gh auth login --with-token
+            git push origin main
+            echo "✅ Fast-forward sync completed"
+            exit 0
+          fi
+          
+          echo "⚠️ Local main has diverged from upstream (local commits exist)."
+          echo "Attempting rebase to preserve local commits..."
+          
+          # Rebase local main onto upstream/main
+          git checkout main
+          if git rebase upstream/main; then
+            echo "✅ Rebase completed cleanly"
+            echo "${ACTION_WRITE}" | gh auth login --with-token
+            git push origin main --force-with-lease
+            echo "✅ Rebased and pushed"
+            exit 0
+          fi
+          
+          echo "❌ Rebase has conflicts, falling back to Track 2 (AI conflict resolution)"
+          exit 1
 
+      # ===== Track 2: Python AI 冲突解决 =====
       - name: Setup Python
         if: steps.track1.outcome == 'failure'
         uses: actions/setup-python@main
@@ -51,7 +92,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('custom_scripts/**/*.py') }}
+          key: pip-sync-${{ runner.os }}-${{ hashFiles('custom_scripts/**/*.py') }}
 
       - name: Install Python dependencies
         if: steps.track1.outcome == 'failure'
@@ -87,7 +128,7 @@ jobs:
           echo "=== Track 2: Python AI 冲突解决 ==="
           python custom_scripts/resolve_upstream_conflicts.py
 
-      - name: Setup OpenCode & Oh-My-OpenCode
+      - name: Setup OpenCode & Oh-My-OpenCode (Track 3)
         if: steps.track2.outcome == 'failure'
         run: |
           echo "=== Track 2 失败，启动 OpenCode 深度修复 ==="
@@ -127,13 +168,14 @@ jobs:
           CONFLICTED=$(git diff --name-only --diff-filter=U 2>/dev/null || echo "")
 
           git stash 2>/dev/null || true
+          git rebase --abort 2>/dev/null || true
           git merge --abort 2>/dev/null || true
           git reset --hard HEAD 2>/dev/null || true
 
           git config --local --unset-all http.https://github.com/.extraheader || true
-          git fetch origin main
+          git fetch upstream main
           git checkout main || git checkout -b main
-          git reset --hard origin/main
+          git reset --hard upstream/main
           git clean -fd
 
           BEST_MODEL=$(python custom_scripts/pick_best_model.py)
@@ -150,11 +192,11 @@ jobs:
           cp opencode.json ~/.config/opencode/opencode.json
 
           if [ -z "$CONFLICTED" ]; then
-            echo "无冲突文件，跳过 Track 3"
-            exit 0
+            echo "无冲突文件，但 Track 1 和 Track 2 均失败。尝试让 OpenCode 分析并修复..."
+            CONFLICTED="请分析本地定制与上游更新的差异，智能合并保留重要更新。"
           fi
 
-          echo "检测到冲突文件列表:"
+          echo "检测到问题:"
           echo "$CONFLICTED"
 
           FIX_SUCCEEDED=false
@@ -164,9 +206,9 @@ jobs:
           if [ -f "AGENTS.md" ]; then
             AGENTS_PROMPT="【全局要求 - 必须遵守】$(cat AGENTS.md)"
           fi
-          oh-my-opencode run --model "$BEST_MODEL" "$AGENTS_PROMPT\n\n分析上游同步产生的合并冲突。冲突文件: $CONFLICTED。请智能合并冲突，保留上游的重要更新同时保留本地定制。修复后提交。退出。" 2>&1 | tee opencode_output.log || true
+          oh-my-opencode run --model "$BEST_MODEL" "$AGENTS_PROMPT\n\n上游同步产生的合并冲突或差异。冲突/差异内容: $CONFLICTED。请智能合并冲突，保留上游的重要更新同时保留本地定制。修复后提交。退出。" 2>&1 | tee opencode_output.log || true
 
-          if grep -qi "ProviderModelNotFoundError\|Error: Model not found\|session.error\|UnknownError" opencode_output.log; then
+          if grep -qiE "ProviderModelNotFoundError|Error: Model not found|session.error|UnknownError" opencode_output.log; then
             echo "::warning::oh-my-opencode 运行异常，准备 fallback..."
           else
             FIX_SUCCEEDED=true
@@ -175,7 +217,7 @@ jobs:
           if [ "$FIX_SUCCEEDED" = "false" ]; then
             echo "尝试 opencode run..."
             opencode run --model "$BEST_MODEL" "$AGENTS_PROMPT\n\n解决上游同步的合并冲突。智能合并，保留重要更新。退出。" 2>&1 | tee opencode_output.log || true
-            if ! grep -qi "ProviderModelNotFoundError\|Error: Model not found\|session.error\|UnknownError" opencode_output.log; then
+            if ! grep -qiE "ProviderModelNotFoundError|Error: Model not found|session.error|UnknownError" opencode_output.log; then
               FIX_SUCCEEDED=true
             fi
           fi
@@ -208,7 +250,6 @@ jobs:
 
           git commit -m "🔀 chore: auto-resolve upstream merge conflicts with OpenCode"
           echo "${ACTION_WRITE}" | gh auth login --with-token
-          git pull --rebase origin main || true
           git push origin HEAD:main || { echo "::error::Push failed"; exit 1; }
 
           echo "Track 3 修复成功并已推送"
@@ -221,10 +262,18 @@ jobs:
           title: '🚨 同步失败 | Sync Fail'
           labels: '🚨 Sync Fail'
           body: |
-            上游同步工作流失败，Track 2 和 Track 3 AI 修复均未能解决冲突。
+            上游同步工作流失败，Track 1/2/3 均未能解决。
+
+            - Track 1 (git rebase): 失败，本地 main 与上游 lobehub/lobehub:main 存在冲突
+            - Track 2 (Python AI): 失败
+            - Track 3 (OpenCode): 失败
 
             请手动检查并解决冲突。
-
-            Upstream sync workflow failed. Both Track 2 and Track 3 AI fixes could not resolve conflicts.
-
-            Please manually check and resolve conflicts.
+            ```bash
+            git remote add upstream https://github.com/lobehub/lobehub.git
+            git fetch upstream main
+            git checkout main
+            git rebase upstream/main
+            # 解决冲突
+            git push origin main --force-with-lease
+            ```
