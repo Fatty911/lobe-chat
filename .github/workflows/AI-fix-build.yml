@@ -181,6 +181,7 @@ jobs:
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           ACTION_WRITE: ${{ secrets.ACTION_WRITE }}
+          REVIEW_BUSINESS_CONTEXT: "LobeHub: Next.js 16 / React 19 / TypeScript monorepo using pnpm, bun, Zustand, Drizzle ORM. AI fixes must: (1) only modify failing code, (2) not delete tests, (3) maintain TypeScript strict mode, (4) not use 'as any' or @ts-ignore/@ts-expect-error, (5) follow existing code patterns, (6) not modify package.json/tsconfig.json unless absolutely necessary."
           GH_TOKEN: ${{ secrets.ACTION_WRITE }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
@@ -258,6 +259,21 @@ jobs:
             exit 1
           fi
           echo "✅ 语法校验通过"
+
+          echo "=== 🔍 多模型共识评审 ==="
+          git diff --cached > /tmp/fix_diff.patch
+          ERROR_CONTENT=""
+          if [ -f "last_error.log" ]; then
+            ERROR_CONTENT=$(cat last_error.log | head -c 4000)
+          fi
+          python custom_scripts/multi_agent_review.py review --diff-file /tmp/fix_diff.patch --error "$ERROR_CONTENT"
+          if [ $? -ne 0 ]; then
+            echo "::error::多模型共识评审未通过，拒绝提交"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+          echo "✅ 多模型共识评审通过"
 
           FIX_BRANCH="fix/ai-build-${{ github.event.workflow_run.run_number || inputs.failed_run_id }}"
           git checkout -b "$FIX_BRANCH"

@@ -293,8 +293,10 @@ def do_review(args):
 
     if passed:
         print("RESULT: PASS")
+        sys.exit(0)
     else:
         print("RESULT: FAIL")
+        sys.exit(1)
 
 
 def do_fix_and_review(args):
