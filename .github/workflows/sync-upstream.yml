@@ -46,6 +46,13 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Cache pip packages
+        if: steps.track1.outcome == 'failure'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('custom_scripts/**/*.py') }}
+
       - name: Install Python dependencies
         if: steps.track1.outcome == 'failure'
         run: |
@@ -128,9 +135,6 @@ jobs:
           git checkout main || git checkout -b main
           git reset --hard origin/main
           git clean -fd
-
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4 pyyaml
 
           BEST_MODEL=$(python custom_scripts/pick_best_model.py)
           SMALL_MODEL=$(python custom_scripts/pick_best_model.py --small)
