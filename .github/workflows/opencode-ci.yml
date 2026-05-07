@@ -106,6 +106,8 @@ jobs:
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
           MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           ACTION_WRITE: ${{ secrets.ACTION_WRITE }}
+          USER_PROMPT: ${{ github.event_name == 'issue_comment' && github.event.comment.body || github.event_name == 'issues' && format('{0} {1}', github.event.issue.title, github.event.issue.body) || github.event_name == 'pull_request_review' && github.event.review.body || github.event_name == 'pull_request_review_comment' && github.event.comment.body || inputs.prompt || '' }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           
@@ -118,24 +120,7 @@ jobs:
             exit 1
           fi
           
-          PROMPT=""
-          case "${{ github.event_name }}" in
-            issue_comment)
-              PROMPT="${{ github.event.comment.body }}"
-              ;;
-            issues)
-              PROMPT="${{ github.event.issue.title }} ${{ github.event.issue.body }}"
-              ;;
-            pull_request_review)
-              PROMPT="${{ github.event.review.body }}"
-              ;;
-            pull_request_review_comment)
-              PROMPT="${{ github.event.comment.body }}"
-              ;;
-            workflow_dispatch)
-              PROMPT="${{ inputs.prompt }}"
-              ;;
-          esac
+          PROMPT="$USER_PROMPT"
           
           PROMPT="${PROMPT//@opencode/}"
           

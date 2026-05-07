@@ -1,5 +1,4 @@
 name: OpenCode Auto Testing Coverage
-description: Automatically add unit tests to improve code coverage
 
 on:
   schedule:
@@ -71,7 +70,6 @@ jobs:
           QINIU_API_KEY: ${{ secrets.QINIU_API_KEY }}
           QIANFAN_CODING_API_KEY: ${{ secrets.QIANFAN_CODING_API_KEY }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           TARGET_MODULE: ${{ inputs.target_module }}
           REPO: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}

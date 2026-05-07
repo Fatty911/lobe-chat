@@ -146,5 +146,8 @@ apps/desktop/resources/cli-package.json
 
 # Superpowers plugin brainstorm/spec outputs (local only; do not commit)
 .superpowers/
-docs/superpowers/
-.heerogeneous-tracing
+docs/superpowers/custom_scripts/__pycache__/
+
+# Python cache
+__pycache__/
+custom_scripts/__pycache__/
