@@ -5,8 +5,7 @@ on:
   workflow_run:
     workflows:
       - "Test CI"
-      - "Test Packages"
-      - "Test App"
+      - "E2E CI"
     types:
       - completed
   workflow_dispatch:
