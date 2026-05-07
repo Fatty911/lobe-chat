@@ -25,6 +25,10 @@ permissions:
   actions: write
   pull-requests: write
 
+concurrency:
+  group: ai-fix-build-${{ github.event.workflow_run.id || github.event.inputs.failed_run_id || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   ai_fix:
     name: "AI Fix → ${{ github.event.workflow_run.name || inputs.failed_workflow_name }}"
@@ -68,24 +72,39 @@ jobs:
           echo "检测到工作流 [$WORKFLOW_NAME] 运行失败!"
           echo "正在提取错误日志 (Run ID: $RUN_ID)..."
 
-          # Try gh CLI to get failed logs
+          # Method 1: Try gh CLI to get failed logs (most reliable)
           gh run view "$RUN_ID" --log-failed > /tmp/build_error.log 2>/dev/null || true
           if [ -s /tmp/build_error.log ]; then
             echo "✅ 通过 gh CLI 提取到错误日志"
             cp /tmp/build_error.log last_error.log
-          else
-            # Try downloading artifacts if the workflow uploaded them
+          fi
+
+          # Method 2: Try downloading artifacts if the workflow uploaded them
+          if [ ! -s "last_error.log" ]; then
             gh run download "$RUN_ID" -n error-log 2>/dev/null || true
             if [ -f "error-log" ]; then
               cp error-log last_error.log
+              echo "✅ 通过 artifact 下载到错误日志"
             fi
           fi
 
+          # Method 3: Try actions/download-artifact for cross-workflow artifact
+          if [ ! -s "last_error.log" ]; then
+            gh run download "$RUN_ID" --dir /tmp/run_artifacts 2>/dev/null || true
+            if [ -d /tmp/run_artifacts ]; then
+              find /tmp/run_artifacts -type f \( -name "*.log" -o -name "*.txt" \) -exec cat {} \; | grep -iE "error|failed|fatal|ERR!|AssertionError|TypeError|SyntaxError" | tail -n 500 > last_error.log || true
+              if [ -s "last_error.log" ]; then
+                echo "✅ 从运行产物中提取到错误日志"
+              fi
+            fi
+          fi
+
+          # Method 4: Fallback - download full logs
           if [ ! -s "last_error.log" ]; then
             echo "⚠️ 无法获取错误日志，尝试下载整个运行日志..."
             gh run download "$RUN_ID" -D /tmp/run_logs 2>/dev/null || true
             if [ -d /tmp/run_logs ]; then
-              cat /tmp/run_logs/**/*.log 2>/dev/null | head -5000 > last_error.log || true
+              find /tmp/run_logs -type f -name "*.txt" -exec cat {} \; | grep -iE "error|failed|fatal|ERR!|AssertionError|TypeError|SyntaxError" | tail -n 1000 > last_error.log || true
             fi
           fi
 
