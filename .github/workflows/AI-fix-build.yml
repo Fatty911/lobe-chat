@@ -1,0 +1,275 @@
+name: AI Fix Build
+run-name: "AI Fix for ${{ github.event.workflow_run.name }} (#${{ github.event.workflow_run.run_number }})"
+
+on:
+  workflow_run:
+    workflows:
+      - "Test CI"
+      - "Test Packages"
+      - "Test App"
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      failed_run_id:
+        description: 'Failed Run ID'
+        required: true
+        type: string
+      failed_workflow_name:
+        description: 'Failed Workflow Name'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: write
+  pull-requests: write
+
+jobs:
+  ai_fix:
+    name: "AI Fix → ${{ github.event.workflow_run.name || inputs.failed_workflow_name }}"
+    if: |
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.name != 'AI Fix Build')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.ACTION_WRITE }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@main
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-ai-fix-${{ runner.os }}-${{ hashFiles('custom_scripts/**/*.py') }}
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 pyyaml
+
+      - name: Download error log
+        id: error_log
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.ACTION_WRITE || github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id || inputs.failed_run_id }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name || inputs.failed_workflow_name }}
+        run: |
+          echo "检测到工作流 [$WORKFLOW_NAME] 运行失败!"
+          echo "正在提取错误日志 (Run ID: $RUN_ID)..."
+
+          # Try gh CLI to get failed logs
+          gh run view "$RUN_ID" --log-failed > /tmp/build_error.log 2>/dev/null || true
+          if [ -s /tmp/build_error.log ]; then
+            echo "✅ 通过 gh CLI 提取到错误日志"
+            cp /tmp/build_error.log last_error.log
+          else
+            # Try downloading artifacts if the workflow uploaded them
+            gh run download "$RUN_ID" -n error-log 2>/dev/null || true
+            if [ -f "error-log" ]; then
+              cp error-log last_error.log
+            fi
+          fi
+
+          if [ ! -s "last_error.log" ]; then
+            echo "⚠️ 无法获取错误日志，尝试下载整个运行日志..."
+            gh run download "$RUN_ID" -D /tmp/run_logs 2>/dev/null || true
+            if [ -d /tmp/run_logs ]; then
+              cat /tmp/run_logs/**/*.log 2>/dev/null | head -5000 > last_error.log || true
+            fi
+          fi
+
+          if [ -s "last_error.log" ]; then
+            echo "✅ 错误日志已保存 (大小: $(wc -c < last_error.log) bytes)"
+            head -100 last_error.log
+          else
+            echo "⚠️ 无法获取错误日志，AI 修复可能无法精准定位问题"
+            echo "Unknown build error - no log available" > last_error.log
+          fi
+
+      - name: Track 2 - AI Fix with Python
+        id: track2
+        continue-on-error: true
+        env:
+          DMXAPI_API_KEY: ${{ secrets.DMXAPI_API_KEY }}
+          QINIU_API_KEY: ${{ secrets.QINIU_API_KEY }}
+          QIANFAN_CODING_API_KEY: ${{ secrets.QIANFAN_CODING_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          BLTCY_API_KEY: ${{ secrets.BLTCY_API_KEY }}
+          BLTCY_PROXY_URL: ${{ secrets.BLTCY_PROXY_URL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ZEN_API_KEY: ${{ secrets.ZEN_API_KEY }}
+          BAILIAN_API_KEY: ${{ secrets.BAILIAN_API_KEY }}
+          MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          MODELSCOPE_API_KEY: ${{ secrets.MODELSCOPE_API_KEY }}
+          ATOMGIT_API_KEY: ${{ secrets.ATOMGIT_API_KEY }}
+          ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          ACTION_WRITE: ${{ secrets.ACTION_WRITE }}
+        run: |
+          echo "=== Track 2: Python AI 自动修复 ==="
+          if [ -f "last_error.log" ]; then
+            python custom_scripts/AI_fix_build_error.py last_error.log
+          else
+            echo "❌ 未找到 last_error.log"
+            exit 1
+          fi
+
+      - name: Track 3 - Setup OpenCode
+        if: steps.track2.outcome == 'failure'
+        run: |
+          echo "=== Track 2 失败，启动 OpenCode 深度修复 ==="
+          curl -fsSL https://bun.sh/install | bash
+          export PATH="$HOME/.bun/bin:$PATH"
+          npm install -g opencode-ai oh-my-openagent
+          oh-my-opencode install --no-tui --claude=no --gemini=no --copilot=yes --skip-auth
+
+      - name: Track 3 - OpenCode Deep Fix
+        id: track3
+        if: steps.track2.outcome == 'failure'
+        timeout-minutes: 90
+        env:
+          DMXAPI_API_KEY: ${{ secrets.DMXAPI_API_KEY }}
+          QINIU_API_KEY: ${{ secrets.QINIU_API_KEY }}
+          QIANFAN_CODING_API_KEY: ${{ secrets.QIANFAN_CODING_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          BLTCY_API_KEY: ${{ secrets.BLTCY_API_KEY }}
+          BLTCY_PROXY_URL: ${{ secrets.BLTCY_PROXY_URL }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ZEN_API_KEY: ${{ secrets.ZEN_API_KEY }}
+          BAILIAN_API_KEY: ${{ secrets.BAILIAN_API_KEY }}
+          MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          MODELSCOPE_API_KEY: ${{ secrets.MODELSCOPE_API_KEY }}
+          ATOMGIT_API_KEY: ${{ secrets.ATOMGIT_API_KEY }}
+          ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          ACTION_WRITE: ${{ secrets.ACTION_WRITE }}
+          GH_TOKEN: ${{ secrets.ACTION_WRITE }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          git stash 2>/dev/null || true
+          git merge --abort 2>/dev/null || true
+          git reset --hard HEAD 2>/dev/null || true
+
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          git fetch origin main
+          git checkout main || git checkout -b main
+          git reset --hard origin/main
+          git clean -fd
+
+          BEST_MODEL=$(python custom_scripts/pick_best_model.py)
+          if [ "$BEST_MODEL" = "NO_MODEL_AVAILABLE" ]; then
+            echo "::error::无可用模型"
+            exit 1
+          fi
+          echo "Track 3 选定模型: $BEST_MODEL"
+
+          python custom_scripts/pick_best_model.py --opencode-config > opencode.json
+          mkdir -p ~/.config/opencode
+          cp opencode.json ~/.config/opencode/opencode.json
+
+          FIX_SUCCEEDED=false
+          AGENTS_PROMPT=""
+          if [ -f "AGENTS.md" ]; then
+            AGENTS_PROMPT="$(cat AGENTS.md)"
+          fi
+
+          ERROR_CONTEXT=""
+          if [ -f "last_error.log" ]; then
+            ERROR_CONTEXT="错误日志:\n$(cat last_error.log | head -200)"
+          fi
+
+          PROMPT="$AGENTS_PROMPT\n\n分析 CI 构建失败。$ERROR_CONTEXT\n\n请分析错误原因，找到根本问题，修复代码。只修改导致失败的代码，不要重构无关代码。不要删除测试来让测试通过。修复完成后提交并退出。"
+
+          echo "尝试 oh-my-opencode..."
+          oh-my-opencode run --model "$BEST_MODEL" "$PROMPT" 2>&1 | tee opencode_output.log || true
+
+          if grep -qiE "ProviderModelNotFoundError|Error: Model not found|session.error|UnknownError" opencode_output.log; then
+            echo "::warning::oh-my-opencode 异常，尝试 opencode..."
+            opencode run --model "$BEST_MODEL" "$PROMPT" 2>&1 | tee opencode_output.log || true
+            if ! grep -qiE "ProviderModelNotFoundError|Error: Model not found|session.error|UnknownError" opencode_output.log; then
+              FIX_SUCCEEDED=true
+            fi
+          else
+            FIX_SUCCEEDED=true
+          fi
+
+          rm -f opencode_output.log
+
+          if [ "$FIX_SUCCEEDED" != "true" ]; then
+            echo "::error::Track 3 AI 修复失败"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add .
+          if git diff --cached --quiet; then
+            echo "::error::AI 运行完成但未产生代码更改"
+            exit 1
+          fi
+
+          echo "=== 🔍 推送前语法校验 ==="
+          python custom_scripts/validate_syntax.py
+          if [ $? -ne 0 ]; then
+            echo "::error::语法校验失败，拒绝推送"
+            git checkout -- .
+            git clean -fd
+            exit 1
+          fi
+          echo "✅ 语法校验通过"
+
+          FIX_BRANCH="fix/ai-build-${{ github.event.workflow_run.run_number || inputs.failed_run_id }}"
+          git checkout -b "$FIX_BRANCH"
+          git commit -m "🐛 fix: auto-fix build error with OpenCode (Run #${{ github.event.workflow_run.run_number || inputs.failed_run_id }})"
+          echo "${ACTION_WRITE}" | gh auth login --with-token
+          git push origin "$FIX_BRANCH"
+
+          echo "Track 3 修复成功并已推送到 $FIX_BRANCH"
+          echo "branch=$FIX_BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Create PR
+        if: steps.track3.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.ACTION_WRITE }}
+          BRANCH: ${{ steps.track3.outputs.branch }}
+          RUN_ID: ${{ github.event.workflow_run.run_number || inputs.failed_run_id }}
+          FAILED_WORKFLOW: ${{ github.event.workflow_run.name || inputs.failed_workflow_name }}
+        run: |
+          if [ -n "$BRANCH" ]; then
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "🐛 fix: auto-fix build error (Run #$RUN_ID)" \
+              --body "AI auto-fix for [$FAILED_WORKFLOW] failure.\n\n- Run ID: $RUN_ID\n- Auto-generated by AI Fix Build workflow" || true
+          fi
+
+      - name: Re-trigger failed workflow
+        if: steps.track3.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.ACTION_WRITE }}
+          FAILED_RUN_ID: ${{ github.event.workflow_run.id || inputs.failed_run_id }}
+        run: |
+          echo "尝试重触发失败的工作流..."
+          gh run rerun "$FAILED_RUN_ID" || echo "重触发失败，可手动触发"
