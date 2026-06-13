@@ -3,7 +3,6 @@ run-name: "Sync upstream lobehub/lobehub → ${{ github.repository }}"
 
 permissions:
   contents: write
-  issues: write
   actions: write
 
 on:
@@ -23,12 +22,6 @@ jobs:
         with:
           token: ${{ secrets.ACTION_WRITE }}
           fetch-depth: 0
-
-      - name: Clean issue notice
-        uses: actions-cool/issues-helper@main
-        with:
-          actions: 'close-issues'
-          labels: '🚨 Sync Fail'
 
       - name: Track 1 - Fetch upstream and attempt sync
         id: track1
@@ -254,51 +247,3 @@ jobs:
           git push origin HEAD:main || { echo "::error::Push failed"; exit 1; }
 
           echo "Track 3 修复成功并已推送"
-
-      - name: Sync check - Create issue
-        if: failure()
-        id: sync_issue
-        continue-on-error: true
-        uses: actions-cool/issues-helper@main
-        with:
-          actions: 'create-issue'
-          title: '🚨 同步失败 | Sync Fail'
-          labels: '🚨 Sync Fail'
-          body: |
-            上游同步工作流失败，Track 1/2/3 均未能解决。
-
-            - Track 1 (git rebase): 失败，本地 main 与上游 lobehub/lobehub:main 存在冲突
-            - Track 2 (Python AI): 失败
-            - Track 3 (OpenCode): 失败
-
-            请手动检查并解决冲突。
-            ```bash
-            git remote add upstream https://github.com/lobehub/lobehub.git
-            git fetch upstream main
-            git checkout main
-            git rebase upstream/main
-            # 解决冲突
-            git push origin main --force-with-lease
-            ```
-
-      - name: Sync check - Report failure
-        if: failure()
-        run: |
-          echo "## 🚨 上游同步失败" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Track | 状态 |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Track 1 (git rebase) | ${{ steps.track1.outcome == 'failure' && '❌ 失败' || '✅ 成功' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Track 2 (Python AI) | ${{ steps.track2.outcome == 'failure' && '❌ 失败' || (steps.track2.outcome == 'success' && '✅ 成功' || '⏭️ 未执行') }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Track 3 (OpenCode) | ${{ steps.track3.outcome == 'failure' && '❌ 失败' || (steps.track3.outcome == 'success' && '✅ 成功' || '⏭️ 未执行') }} |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "请手动检查并解决冲突：" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo 'git remote add upstream https://github.com/lobehub/lobehub.git' >> $GITHUB_STEP_SUMMARY
-          echo 'git fetch upstream main' >> $GITHUB_STEP_SUMMARY
-          echo 'git checkout main' >> $GITHUB_STEP_SUMMARY
-          echo 'git rebase upstream/main' >> $GITHUB_STEP_SUMMARY
-          echo '# 解决冲突后' >> $GITHUB_STEP_SUMMARY
-          echo 'git push origin main --force-with-lease' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "::error::上游同步所有 Track 均失败，请查看 Step Summary 和日志"
