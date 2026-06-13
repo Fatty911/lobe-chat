@@ -6,16 +6,30 @@ permissions:
   actions: write
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: '0 */12 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: sync-upstream-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   sync_latest_from_upstream:
     name: Sync latest commits from upstream repo
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    if: ${{ github.event.repository.fork }}
+    if: >-
+      ${{
+        github.event.repository.fork &&
+        (github.event_name != 'push' ||
+         (github.actor != 'github-actions[bot]' &&
+          !contains(github.actor, '[bot]') &&
+          !contains(github.event.head_commit.message, '[auto-sync]')))
+      }}
 
     steps:
       - uses: actions/checkout@v6
@@ -242,7 +256,7 @@ jobs:
           fi
           echo "✅ 语法校验通过"
 
-          git commit -m "🔀 chore: auto-resolve upstream merge conflicts with OpenCode"
+          git commit -m "🔀 chore: auto-resolve upstream merge conflicts with OpenCode [auto-sync]"
           echo "${ACTION_WRITE}" | gh auth login --with-token
           git push origin HEAD:main || { echo "::error::Push failed"; exit 1; }
 
