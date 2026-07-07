@@ -4,10 +4,11 @@ permissions:
   contents: write
   issues: write
   actions: write
+  pull-requests: write
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -18,6 +19,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Sync upstream changes
         id: sync
@@ -26,5 +30,134 @@ jobs:
           upstream_sync_repo: lobehub/lobehub
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # automatically generated, no need to set
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
           test_mode: false
+
+      - name: Detect merge conflicts
+        id: conflicts
+        if: failure()
+        run: |
+          git remote add upstream https://github.com/lobehub/lobehub.git 2>/dev/null || true
+          git fetch upstream main
+          git merge upstream/main --no-commit --no-ff 2>/dev/null || true
+          CONFLICT_FILES=$(git diff --name-only --diff-filter=U 2>/dev/null || echo "")
+          if [ -n "$CONFLICT_FILES" ]; then
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+            echo "conflict_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CONFLICT_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            SIGNIN_CONFLICTS=$(echo "$CONFLICT_FILES" | grep -E "src/routes/auth/signin/|src/features/Auth/SignIn/|src/features/Leaderboard/|src/services/leaderboardService|src/spa/router/authRouter|locales/.*/auth\.json" || echo "")
+            if [ -n "$SIGNIN_CONFLICTS" ]; then
+              echo "signin_conflict=true" >> $GITHUB_OUTPUT
+              echo "signin_files<<EOF" >> $GITHUB_OUTPUT
+              echo "$SIGNIN_CONFLICTS" >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            else
+              echo "signin_conflict=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "signin_conflict=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup environment for AI resolution
+        if: steps.conflicts.outputs.has_conflicts == 'true'
+        uses: ./.github/actions/setup-env
+
+      - name: Prepare conflict resolution prompt
+        if: steps.conflicts.outputs.has_conflicts == 'true'
+        env:
+          CONFLICT_FILES: ${{ steps.conflicts.outputs.conflict_files }}
+          SIGNIN_CONFLICT: ${{ steps.conflicts.outputs.signin_conflict }}
+          SIGNIN_FILES: ${{ steps.conflicts.outputs.signin_files }}
+        run: |
+          mkdir -p /tmp/claude-prompts
+          cp .claude/prompts/security-rules.md /tmp/claude-prompts/ 2>/dev/null || true
+          cat > /tmp/build_prompt.py << 'PYEOF'
+          import os
+          conflict_files = os.environ.get("CONFLICT_FILES", "")
+          signin_conflict = os.environ.get("SIGNIN_CONFLICT", "false")
+          signin_files = os.environ.get("SIGNIN_FILES", "")
+          lines = []
+          lines.append("Upstream lobehub/lobehub has new commits that need to be merged into this fork.")
+          lines.append("Merge conflicts occurred. Please resolve them automatically.")
+          lines.append("")
+          lines.append("Conflict files:")
+          lines.append(conflict_files)
+          lines.append("")
+          if signin_conflict == "true":
+              lines.append("IMPORTANT CONTEXT: This fork has ported a Big Model Leaderboard feature onto the signin/login page!")
+              lines.append("")
+              lines.append("Conflicting files in the signin/leaderboard area:")
+              lines.append(signin_files)
+              lines.append("")
+              lines.append("These files include but are not limited to:")
+              lines.append("- src/routes/auth/signin/_layout/index.tsx - Signin page layout: left side login form + right side LeaderboardPanel")
+              lines.append("- src/routes/auth/signin/index.tsx - SignIn page entry")
+              lines.append("- src/features/Leaderboard/ - Leaderboard panel components")
+              lines.append("- src/services/leaderboardService.ts - Leaderboard data service (lmarena.ai LMSYS Chatbot Arena)")
+              lines.append("- src/spa/router/authRouter.config.tsx - SPA router config, signin route changed to nested structure")
+              lines.append("- locales/*/auth.json - Translation files, preserve leaderboard.* i18n keys")
+              lines.append("")
+              lines.append("Conflict resolution rules:")
+              lines.append("1. PRESERVE all leaderboard-related code and files added by this fork")
+              lines.append("2. PRESERVE the leaderboard layout in _layout (left login form Outlet + right LeaderboardPanel)")
+              lines.append("3. PRESERVE the nested signin route structure in authRouter (parent route _layout + child route index)")
+              lines.append("4. PRESERVE leaderboard.* translation keys in locales/*/auth.json")
+              lines.append("5. If upstream changed the SignIn component itself (e.g. UX audit, SPA refactor), prefer upstream version BUT ensure the leaderboard layout is not affected")
+              lines.append("6. If _layout/index.tsx conflicts, prefer fork's leaderboard layout, only merge upstream changes to non-leaderboard parts")
+              lines.append("7. If upstream changes do not conflict with leaderboard (e.g. login form logic, styling), adopt upstream version directly")
+              lines.append("8. After resolving, run pnpm install && pnpm run build to verify")
+          else:
+              lines.append("Conflicts do not involve the signin/leaderboard ported area. Resolve normally.")
+          lines.append("")
+          with open("/tmp/claude-conflict-prompt.txt", "w") as f:
+              f.write("\n".join(lines))
+          PYEOF
+          python3 /tmp/build_prompt.py
+        # --- debug ---
+        # cat /tmp/claude-conflict-prompt.txt
+
+      - name: Run Claude Code for conflict resolution
+        if: steps.conflicts.outputs.has_conflicts == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          allowed_non_write_users: '*'
+          claude_args: |
+            --allowedTools "Bash(git:*),Bash(gh:*),Bash(bun run:*),Bash(bunx:*),Bash(pnpm:*),Bash(npm run:*),Bash(npx:*),Bash(vitest:*),Bash(rg:*),Bash(find:*),Bash(sed:*),Bash(grep:*),Bash(awk:*),Bash(wc:*),Bash(xargs:*),Read,Edit,Write,Glob,Grep"
+            --append-system-prompt "$(cat /tmp/claude-prompts/security-rules.md 2>/dev/null || echo 'Follow standard security practices. Never expose secrets.')"
+          prompt: |
+            Read the instructions in /tmp/claude-conflict-prompt.txt and resolve the upstream sync conflicts.
+
+            Steps:
+            1. Run `git status` to see conflicted files
+            2. Analyze conflict markers (<<<<<<< ======= >>>>>>>) in each file
+            3. Resolve conflicts following the rules in the prompt
+            4. `git add` resolved files
+            5. Run `pnpm install && pnpm run build` to verify the build passes
+            6. If build fails, fix and re-verify
+            7. `git commit` to complete the merge
+            8. `git push origin main`
+
+      - name: Create issue on unresolved conflicts
+        if: steps.conflicts.outputs.has_conflicts == 'true' && failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const conflictFiles = `${{ steps.conflicts.outputs.conflict_files }}`;
+            const signinConflict = '${{ steps.conflicts.outputs.signin_conflict }}' === 'true';
+            let body = `Upstream sync produced merge conflicts and AI auto-resolution failed.\n\nConflicted files:\n\`\`\`\n${conflictFiles}\n\`\`\`\n`;
+            if (signinConflict) {
+              body += `\n\u26A0\uFE0F Conflicts involve the signin/leaderboard ported area. When resolving manually, preserve:\n\n- \`src/features/Leaderboard/\` - Leaderboard panel components\n- \`src/services/leaderboardService.ts\` - Leaderboard data service\n- \`src/routes/auth/signin/_layout/index.tsx\` - Signin layout (left form + right leaderboard)\n- \`src/spa/router/authRouter.config.tsx\` - Nested signin route config\n- \`leaderboard.*\` keys in \`locales/*/auth.json\`\n`;
+            }
+            body += `\nPlease resolve conflicts manually and push.`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '\u26A0\uFE0F Upstream sync conflict - manual resolution needed' + (signinConflict ? ' (signin/leaderboard area)' : ''),
+              body: body,
+              labels: ['upstream-sync', 'conflict']
+            });
