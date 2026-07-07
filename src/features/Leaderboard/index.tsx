@@ -4,6 +4,7 @@ import { Flexbox, Text } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { getLeaderboardData, type LeaderboardEntry } from '@/services/leaderboardService';
 
@@ -51,7 +52,7 @@ const useStyles = createStaticStyles(({ css, cssVar }) => ({
   cnBadge: css`
     font-size: 10px;
     background: ${cssVar.colorError};
-    color: #fff;
+    color: ${cssVar.colorWhite};
     padding: 0 4px;
     border-radius: 4px;
     margin-left: 4px;
@@ -61,19 +62,20 @@ const useStyles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-const rankStyle = (rank: number): React.CSSProperties => {
-  if (rank === 1) return { background: '#f59e0b', color: '#fff' };
-  if (rank === 2) return { background: '#94a3b8', color: '#fff' };
-  if (rank === 3) return { background: '#d97706', color: '#fff' };
-  return { color: '#94a3b8' };
-};
-
 export const LeaderboardPanel = () => {
   const { styles } = useStyles();
+  const { t } = useTranslation('auth');
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isLive, setIsLive] = useState(true);
   const [fallbackDate, setFallbackDate] = useState<string>();
+
+  const rankStyle = (rank: number): React.CSSProperties => {
+    if (rank === 1) return { background: 'var(--ant-color-warning, #f59e0b)', color: 'var(--ant-color-white, #fff)' };
+    if (rank === 2) return { background: 'var(--ant-color-text-tertiary, #94a3b8)', color: 'var(--ant-color-white, #fff)' };
+    if (rank === 3) return { background: 'var(--ant-orange-7, #d97706)', color: 'var(--ant-color-white, #fff)' };
+    return { color: 'var(--ant-color-text-tertiary, #94a3b8)' };
+  };
 
   useEffect(() => {
     getLeaderboardData().then((result) => {
@@ -87,19 +89,22 @@ export const LeaderboardPanel = () => {
   return (
     <div className={styles.container}>
       <Flexbox align={'center'} gap={4} style={{ marginBottom: 16 }}>
-        <Text style={{ fontSize: 16, fontWeight: 700 }}>全球大模型战力榜</Text>
+        <Text style={{ fontSize: 16, fontWeight: 700 }}>{t('leaderboard.title')}</Text>
         <Text style={{ fontSize: 11 }} type={'secondary'}>
-          LMSYS Chatbot Arena · lmarena.ai
+          {t('leaderboard.source')}
         </Text>
         {loading ? (
           <Text style={{ fontSize: 11 }} type={'warning'}>
-            加载中...
+            {t('leaderboard.loading')}
           </Text>
         ) : isLive ? (
-          <Text style={{ fontSize: 11, color: '#22c55e' }}>✅ 实时数据</Text>
+          <Text style={{ fontSize: 11, color: 'var(--ant-color-success, #22c55e)' }}>
+            {t('leaderboard.status.live')}
+          </Text>
         ) : (
           <Text style={{ fontSize: 11 }} type={'warning'}>
-            ⚠ 缓存数据 {fallbackDate ? `(${fallbackDate})` : ''}
+            {t('leaderboard.status.cached')}
+            {fallbackDate ? ` (${fallbackDate})` : ''}
           </Text>
         )}
       </Flexbox>
@@ -120,10 +125,10 @@ export const LeaderboardPanel = () => {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th className={styles.th}>#</th>
-              <th className={styles.th}>模型</th>
+              <th className={styles.th}>{t('leaderboard.columns.rank')}</th>
+              <th className={styles.th}>{t('leaderboard.columns.model')}</th>
               <th className={styles.th} style={{ textAlign: 'right' }}>
-                分数
+                {t('leaderboard.columns.score')}
               </th>
             </tr>
           </thead>
@@ -137,7 +142,7 @@ export const LeaderboardPanel = () => {
                 </td>
                 <td className={styles.td}>
                   {entry.model}
-                  {entry.is_chinese && <span className={styles.cnBadge}>CN</span>}
+                  {entry.is_chinese && <span className={styles.cnBadge}>{t('leaderboard.tag.cn')}</span>}
                 </td>
                 <td className={`${styles.td} ${styles.scoreCell}`}>
                   {entry.arena_score}
