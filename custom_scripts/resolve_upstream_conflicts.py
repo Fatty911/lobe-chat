@@ -190,20 +190,55 @@ def resolve_conflict_with_ai(file_path: str, content: str, model_config: Dict, h
     return call_ai_api(prompt, model_config)
 
 def get_available_model() -> Optional[Dict]:
-    """获取可用的 AI 模型配置"""
+    """获取可用的 AI 模型配置（按优先级排序：免费 > Plan > 按量）"""
     model_configs = [
+        # 免费端点
         {
-            'name': 'deepseek',
-            'api_key_env': 'DEEPSEEK_API_KEY',
-            'base_url': 'https://api.deepseek.com',
-            'model': 'deepseek-chat'
+            'name': 'modelscope',
+            'api_key_env': 'MODELSCOPE_GLM5_API_KEY',
+            'base_url': 'https://api-inference.modelscope.cn/v1',
+            'model': 'MiniMax/MiniMax-M3'
         },
         {
-            'name': 'openai',
-            'api_key_env': 'OPENAI_API_KEY',
-            'base_url': 'https://api.openai.com/v1',
-            'model': 'gpt-4o'
+            'name': 'atomgit',
+            'api_key_env': 'ATOMGIT_GLM5_API_KEY',
+            'base_url': 'https://api-ai.gitcode.com/v1',
+            'model': 'zai-org/GLM-5.1'
         },
+        # 单家 Coding Plan
+        {
+            'name': 'volcengine-coding',
+            'api_key_env': 'VOLCENGINE_CODING_API_KEY',
+            'base_url': 'https://ark.cn-beijing.volces.com/api/coding/v3',
+            'model': 'glm-5.2'
+        },
+        # 单家 Agent Plan
+        {
+            'name': 'volcengine-agentplan',
+            'api_key_env': 'VOLCENGINE_AGENT_PLAN_API_KEY',
+            'base_url': 'https://ark.cn-beijing.volces.com/api/plan/v3',
+            'model': 'glm-5.2'
+        },
+        # 聚合 Token Plan
+        {
+            'name': 'bailian',
+            'api_key_env': 'BAILIAN_API_KEY',
+            'base_url': 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+            'model': 'qwen3.7-max'
+        },
+        {
+            'name': 'qianfan-coding',
+            'api_key_env': 'QIANFAN_CODING_API_KEY',
+            'base_url': 'https://qianfan.baidubce.com/v2/coding',
+            'model': 'glm-5.1'
+        },
+        {
+            'name': 'mimo-tokenplan',
+            'api_key_env': 'MIMO_TOKENPLAN_API_KEY',
+            'base_url': 'https://token-plan-cn.xiaomimimo.com/v1',
+            'model': 'mimo-v2.5-pro'
+        },
+        # 按量付费
         {
             'name': 'zhipu',
             'api_key_env': 'ZHIPU_API_KEY',
@@ -211,16 +246,26 @@ def get_available_model() -> Optional[Dict]:
             'model': 'glm-4'
         },
         {
-            'name': 'moonshot',
-            'api_key_env': 'MOONSHOT_API_KEY',
-            'base_url': 'https://api.moonshot.cn/v1',
-            'model': 'moonshot-v1-8k'
+            'name': 'siliconflow',
+            'api_key_env': 'SILICONFLOW_API_KEY',
+            'base_url': 'https://api.siliconflow.cn/v1',
+            'model': 'Qwen/Qwen2.5-72B-Instruct'
+        },
+        {
+            'name': 'qianfan',
+            'api_key_env': 'QIANFAN_API_KEY',
+            'base_url': 'https://qianfan.baidubce.com/v2',
+            'model': 'ernie-4.0-turbo-8k'
         },
     ]
     
     for config in model_configs:
-        if os.environ.get(config['api_key_env']):
+        key = os.environ.get(config['api_key_env'])
+        if key and len(key) > 10:
+            print(f"  ✓ 找到可用模型: {config['name']}/{config['model']}")
             return config
+        elif key:
+            print(f"  ✗ {config['name']}: key 太短 ({len(key)} chars)")
     
     return None
 
