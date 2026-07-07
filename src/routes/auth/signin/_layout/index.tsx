@@ -2,7 +2,7 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles } from 'antd-style';
-import { Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router';
 
 import { LeaderboardPanel } from '@/features/Leaderboard';
 
