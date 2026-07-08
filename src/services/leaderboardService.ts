@@ -7,18 +7,18 @@ const LS_FALLBACK_DATE_KEY = 'leaderboard_fallback_date';
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 export interface LeaderboardEntry {
-  rank: number;
-  model: string;
   arena_score: number;
-  organization: string;
   is_chinese: boolean;
+  model: string;
+  organization: string;
+  rank: number;
 }
 
 interface CacheEntry {
   data: LeaderboardEntry[];
-  timestamp: number;
-  isLive: boolean;
   fallbackDate?: string;
+  isLive: boolean;
+  timestamp: number;
 }
 
 let cache: CacheEntry | null = null;
@@ -150,8 +150,8 @@ function saveLocalFallback(data: LeaderboardEntry[]) {
 
 export interface LeaderboardResult {
   data: LeaderboardEntry[];
-  isLive: boolean;
   fallbackDate?: string;
+  isLive: boolean;
 }
 
 export async function getLeaderboardData(forceRefresh = false): Promise<LeaderboardResult> {
