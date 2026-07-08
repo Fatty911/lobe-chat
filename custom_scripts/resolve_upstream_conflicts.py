@@ -251,12 +251,6 @@ def get_available_model() -> Optional[Dict]:
             'base_url': 'https://api.siliconflow.cn/v1',
             'model': 'Qwen/Qwen2.5-72B-Instruct'
         },
-        {
-            'name': 'qianfan',
-            'api_key_env': 'QIANFAN_API_KEY',
-            'base_url': 'https://qianfan.baidubce.com/v2',
-            'model': 'ernie-4.0-turbo-8k'
-        },
     ]
     
     for config in model_configs:
