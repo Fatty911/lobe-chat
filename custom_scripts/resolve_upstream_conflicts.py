@@ -190,66 +190,43 @@ def resolve_conflict_with_ai(file_path: str, content: str, model_config: Dict, h
     return call_ai_api(prompt, model_config)
 
 def get_available_model() -> Optional[Dict]:
-    """获取可用的 AI 模型配置（按优先级排序：免费 > Plan > 按量）"""
+    """获取可用的 AI 模型配置（免费优先 > Plan，只保留 AA 前 20 模型）"""
     model_configs = [
-        # 免费端点
+        # 免费端点 — 只保留最强的 1 个
         {
             'name': 'modelscope',
             'api_key_env': 'MODELSCOPE_API_KEY',
             'base_url': 'https://api-inference.modelscope.cn/v1',
-            'model': 'MiniMax/MiniMax-M3'
+            'model': 'MiniMax/MiniMax-M3'  # AA #15
         },
-        {
-            'name': 'atomgit',
-            'api_key_env': 'ATOMGIT_API_KEY',
-            'base_url': 'https://api-ai.gitcode.com/v1',
-            'model': 'zai-org/GLM-5.1'
-        },
-        # 单家 Coding Plan
+        # 付费 — 只保留 AA 前 20
+        # 单家 Coding Plan: glm-5.2 (AA #7)
         {
             'name': 'volcengine-coding-plan',
             'api_key_env': 'VOLCENGINE_CODING_PLAN_API_KEY',
             'base_url': 'https://ark.cn-beijing.volces.com/api/coding/v3',
             'model': 'glm-5.2'
         },
-        # 单家 Agent Plan
+        # 单家 Agent Plan: glm-5.2 (AA #7)
         {
             'name': 'volcengine-agent-plan',
             'api_key_env': 'VOLCENGINE_AGENT_PLAN_API_KEY',
             'base_url': 'https://ark.cn-beijing.volces.com/api/plan/v3',
             'model': 'glm-5.2'
         },
-        # 聚合 Token Plan
+        # 聚合 Token Plan: qwen3.7-max (AA #12)
         {
             'name': 'bailian-plan',
             'api_key_env': 'BAILIAN_PLAN_API_KEY',
             'base_url': 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
             'model': 'qwen3.7-max'
         },
-        {
-            'name': 'qianfan-coding-plan',
-            'api_key_env': 'QIANFAN_CODING_PLAN_API_KEY',
-            'base_url': 'https://qianfan.baidubce.com/v2/coding',
-            'model': 'glm-5.1'
-        },
+        # 聚合 Token Plan: mimo-v2.5-pro (AA #17)
         {
             'name': 'mimo-token-plan',
             'api_key_env': 'MIMO_TOKEN_PLAN_API_KEY',
             'base_url': 'https://token-plan-cn.xiaomimimo.com/v1',
             'model': 'mimo-v2.5-pro'
-        },
-        # 按量付费
-        {
-            'name': 'zhipu',
-            'api_key_env': 'ZHIPU_API_KEY',
-            'base_url': 'https://open.bigmodel.cn/api/paas/v4',
-            'model': 'glm-5.1'
-        },
-        {
-            'name': 'siliconflow',
-            'api_key_env': 'SILICONFLOW_API_KEY',
-            'base_url': 'https://api.siliconflow.cn/v1',
-            'model': 'Qwen/Qwen2.5-72B-Instruct'
         },
     ]
     
