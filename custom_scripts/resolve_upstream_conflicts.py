@@ -195,46 +195,46 @@ def get_available_model() -> Optional[Dict]:
         # 免费端点
         {
             'name': 'modelscope',
-            'api_key_env': 'MODELSCOPE_GLM5_API_KEY',
+            'api_key_env': 'MODELSCOPE_API_KEY',
             'base_url': 'https://api-inference.modelscope.cn/v1',
             'model': 'MiniMax/MiniMax-M3'
         },
         {
             'name': 'atomgit',
-            'api_key_env': 'ATOMGIT_GLM5_API_KEY',
+            'api_key_env': 'ATOMGIT_API_KEY',
             'base_url': 'https://api-ai.gitcode.com/v1',
             'model': 'zai-org/GLM-5.1'
         },
         # 单家 Coding Plan
         {
-            'name': 'volcengine-coding',
-            'api_key_env': 'VOLCENGINE_CODING_API_KEY',
+            'name': 'volcengine-coding-plan',
+            'api_key_env': 'VOLCENGINE_CODING_PLAN_API_KEY',
             'base_url': 'https://ark.cn-beijing.volces.com/api/coding/v3',
             'model': 'glm-5.2'
         },
         # 单家 Agent Plan
         {
-            'name': 'volcengine-agentplan',
+            'name': 'volcengine-agent-plan',
             'api_key_env': 'VOLCENGINE_AGENT_PLAN_API_KEY',
             'base_url': 'https://ark.cn-beijing.volces.com/api/plan/v3',
             'model': 'glm-5.2'
         },
         # 聚合 Token Plan
         {
-            'name': 'bailian',
-            'api_key_env': 'BAILIAN_API_KEY',
+            'name': 'bailian-plan',
+            'api_key_env': 'BAILIAN_PLAN_API_KEY',
             'base_url': 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
             'model': 'qwen3.7-max'
         },
         {
-            'name': 'qianfan-coding',
-            'api_key_env': 'QIANFAN_CODING_API_KEY',
+            'name': 'qianfan-coding-plan',
+            'api_key_env': 'QIANFAN_CODING_PLAN_API_KEY',
             'base_url': 'https://qianfan.baidubce.com/v2/coding',
             'model': 'glm-5.1'
         },
         {
-            'name': 'mimo-tokenplan',
-            'api_key_env': 'MIMO_TOKENPLAN_API_KEY',
+            'name': 'mimo-token-plan',
+            'api_key_env': 'MIMO_TOKEN_PLAN_API_KEY',
             'base_url': 'https://token-plan-cn.xiaomimimo.com/v1',
             'model': 'mimo-v2.5-pro'
         },
@@ -243,7 +243,7 @@ def get_available_model() -> Optional[Dict]:
             'name': 'zhipu',
             'api_key_env': 'ZHIPU_API_KEY',
             'base_url': 'https://open.bigmodel.cn/api/paas/v4',
-            'model': 'glm-4'
+            'model': 'glm-5.1'
         },
         {
             'name': 'siliconflow',
