@@ -3,7 +3,7 @@
 import { Flexbox, Text } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStaticStyles } from 'antd-style';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getLeaderboardData, type LeaderboardEntry } from '@/services/leaderboardService';
@@ -70,7 +70,7 @@ export const LeaderboardPanel = () => {
   const [isLive, setIsLive] = useState(true);
   const [fallbackDate, setFallbackDate] = useState<string>();
 
-  const rankStyle = (rank: number): React.CSSProperties => {
+  const rankStyle = (rank: number): CSSProperties => {
     if (rank === 1) return { background: 'var(--ant-color-warning, #f59e0b)', color: 'var(--ant-color-white, #fff)' };
     if (rank === 2) return { background: 'var(--ant-color-text-tertiary, #94a3b8)', color: 'var(--ant-color-white, #fff)' };
     if (rank === 3) return { background: 'var(--ant-orange-7, #d97706)', color: 'var(--ant-color-white, #fff)' };
