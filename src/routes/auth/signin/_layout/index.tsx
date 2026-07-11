@@ -6,7 +6,7 @@ import { Outlet } from 'react-router';
 
 import { LeaderboardPanel } from '@/features/Leaderboard';
 
-const useStyles = createStaticStyles(({ css, cssVar }) => ({
+const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     display: flex;
     min-height: 100vh;
@@ -21,7 +21,7 @@ const useStyles = createStaticStyles(({ css, cssVar }) => ({
   `,
   right: css`
     width: 420px;
-    border-left: 1px solid ${cssVar.colorBorderSecondary};
+    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorBgContainer};
     display: flex;
     flex-direction: column;
@@ -32,8 +32,6 @@ const useStyles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 const SignInLayout = () => {
-  const { styles } = useStyles();
-
   return (
     <div className={styles.container}>
       <div className={styles.left}>

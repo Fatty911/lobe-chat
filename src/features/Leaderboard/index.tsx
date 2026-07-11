@@ -3,12 +3,12 @@
 import { Flexbox, Text } from '@lobehub/ui';
 import { Skeleton } from 'antd';
 import { createStaticStyles } from 'antd-style';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { type CSSProperties, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getLeaderboardData, type LeaderboardEntry } from '@/services/leaderboardService';
 
-const useStyles = createStaticStyles(({ css, cssVar }) => ({
+const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     padding: 24px;
     max-height: 100vh;
@@ -20,19 +20,21 @@ const useStyles = createStaticStyles(({ css, cssVar }) => ({
     font-size: 13px;
   `,
   th: css`
-    text-align: left;
-    padding: 8px 12px;
+    text-align: start;
+    padding-block: 8px;
+    padding-inline: 12px;
     color: ${cssVar.colorTextSecondary};
     font-weight: 600;
-    border-bottom: 1px solid ${cssVar.colorBorderSecondary};
+    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
     position: sticky;
-    top: 0;
+    inset-block-start: 0;
     background: ${cssVar.colorBgContainer};
     z-index: 1;
   `,
   td: css`
-    padding: 6px 12px;
-    border-bottom: 1px solid ${cssVar.colorBorderSecondary};
+    padding-block: 6px;
+    padding-inline: 12px;
+    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
   `,
   rankBadge: css`
     display: inline-flex;
@@ -45,7 +47,7 @@ const useStyles = createStaticStyles(({ css, cssVar }) => ({
     font-size: 12px;
   `,
   scoreCell: css`
-    text-align: right;
+    text-align: end;
     font-family: monospace;
     color: ${cssVar.colorPrimary};
   `,
@@ -53,17 +55,17 @@ const useStyles = createStaticStyles(({ css, cssVar }) => ({
     font-size: 10px;
     background: ${cssVar.colorError};
     color: ${cssVar.colorWhite};
-    padding: 0 4px;
+    padding-block: 0;
+    padding-inline: 4px;
     border-radius: 4px;
-    margin-left: 4px;
+    margin-inline-start: 4px;
   `,
   skeleton: css`
-    margin-bottom: 8px;
+    margin-block-end: 8px;
   `,
 }));
 
 export const LeaderboardPanel = () => {
-  const { styles } = useStyles();
   const { t } = useTranslation('auth');
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
