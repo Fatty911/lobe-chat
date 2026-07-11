@@ -2,6 +2,14 @@
 
 # Changelog
 
+## Unreleased (Fatty911 fork)
+
+### 🐛 Bug Fixes
+
+- **auth**: treat `createStaticStyles` results as static class maps on the sign-in leaderboard,
+  and load Arena rankings through a cached same-origin backend route so a fresh browser does not
+  render an empty table when upstream endpoints reject cross-origin requests.
+
 ### [Version 2.2.8](https://github.com/lobehub/lobe-chat/compare/v2.2.7...v2.2.8)
 
 <sup>Released on **2026-06-22**</sup>

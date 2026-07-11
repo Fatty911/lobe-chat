@@ -10,26 +10,29 @@ import { getLeaderboardData, type LeaderboardEntry } from '@/services/leaderboar
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
-    padding: 24px;
-    max-height: 100vh;
     overflow-y: auto;
+    max-height: 100vh;
+    padding: 24px;
   `,
   table: css`
-    width: 100%;
     border-collapse: collapse;
+    width: 100%;
     font-size: 13px;
   `,
   th: css`
-    text-align: start;
+    position: sticky;
+    z-index: 1;
+    inset-block-start: 0;
+
     padding-block: 8px;
     padding-inline: 12px;
-    color: ${cssVar.colorTextSecondary};
-    font-weight: 600;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
-    position: sticky;
-    inset-block-start: 0;
+
+    font-weight: 600;
+    color: ${cssVar.colorTextSecondary};
+    text-align: start;
+
     background: ${cssVar.colorBgContainer};
-    z-index: 1;
   `,
   td: css`
     padding-block: 6px;
@@ -40,25 +43,29 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     display: inline-flex;
     align-items: center;
     justify-content: center;
+
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    font-weight: 700;
+
     font-size: 12px;
+    font-weight: 700;
   `,
   scoreCell: css`
-    text-align: end;
     font-family: monospace;
     color: ${cssVar.colorPrimary};
+    text-align: end;
   `,
   cnBadge: css`
-    font-size: 10px;
-    background: ${cssVar.colorError};
-    color: ${cssVar.colorWhite};
+    margin-inline-start: 4px;
     padding-block: 0;
     padding-inline: 4px;
     border-radius: 4px;
-    margin-inline-start: 4px;
+
+    font-size: 10px;
+    color: ${cssVar.colorWhite};
+
+    background: ${cssVar.colorError};
   `,
   skeleton: css`
     margin-block-end: 8px;

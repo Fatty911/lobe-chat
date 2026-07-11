@@ -98,16 +98,17 @@ function parseApiData(data: any): LeaderboardEntry[] {
   if (!Array.isArray(models)) return [];
 
   return models
-    .filter((m: any) => m && (m.model || m.name || m.model_name))
+    .filter((m: any) => m && (m.model || m.name || m.model_name || m.modelDisplayName))
     .map((m: any, i: number) => {
-      const model = m.model || m.name || m.model_name || '';
-      const org = m.organization || m.org || m.provider || detectOrg(model);
+      const model = m.model || m.name || m.model_name || m.modelDisplayName || '';
+      const org =
+        m.organization || m.org || m.provider || m.modelOrganization || detectOrg(model);
       return {
-        rank: i + 1,
-        model: String(model).trim(),
-        arena_score: Math.round(m.rating || m.arena_score || m.score || m.elo || 0),
+        arena_score: Math.round(m.rating ?? m.arena_score ?? m.score ?? m.elo ?? 0),
         organization: org,
         is_chinese: CHINESE_PROVIDERS.has(org),
+        model: String(model).trim(),
+        rank: Number(m.rank) || i + 1,
       };
     })
     .filter(e => e.arena_score > 0)
@@ -115,10 +116,7 @@ function parseApiData(data: any): LeaderboardEntry[] {
 }
 
 async function fetchLiveData(): Promise<LeaderboardEntry[] | null> {
-  const sources = [
-    'https://lmarena.ai/api/v1/leaderboard?category=text',
-    'https://datasets-server.huggingface.co/rows?dataset=lmsys%2Fchatbot_arena_leaderboard&config=default&split=train&offset=0&length=200',
-  ];
+  const sources = ['/webapi/leaderboard'];
 
   for (const url of sources) {
     const data = await fetchFromSource(url);

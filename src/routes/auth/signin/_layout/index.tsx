@@ -13,18 +13,21 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorBgLayout};
   `,
   left: css`
-    flex: 1;
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
+
     padding: 32px;
   `,
   right: css`
-    width: 420px;
-    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
-    background: ${cssVar.colorBgContainer};
     display: flex;
     flex-direction: column;
+
+    width: 420px;
+    border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
+
+    background: ${cssVar.colorBgContainer};
   `,
   mobile: css`
     display: none;
