@@ -264,7 +264,11 @@ def main():
     conflicted_files = get_conflicted_files()
     
     if not conflicted_files:
-        print("✅ 没有检测到冲突文件")
+        print("✅ 没有检测到冲突文件，使用已配置的作者身份重试合并")
+        returncode, _, stderr = run_git_command("git merge upstream/main --no-commit --no-edit")
+        if returncode != 0:
+            print(f"❌ 重试合并失败: {stderr.strip()}")
+            return 1
         return 0
     
     print(f"📋 检测到 {len(conflicted_files)} 个冲突文件:")
