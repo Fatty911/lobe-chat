@@ -269,6 +269,12 @@ def main():
         if returncode != 0:
             print(f"❌ 重试合并失败: {stderr.strip()}")
             return 1
+        returncode, _, stderr = run_git_command(
+            "git restore --source=HEAD --staged --worktree .github/workflows"
+        )
+        if returncode != 0:
+            print(f"❌ 保留 fork workflows 失败: {stderr.strip()}")
+            return 1
         return 0
     
     print(f"📋 检测到 {len(conflicted_files)} 个冲突文件:")
