@@ -251,6 +251,14 @@ def main():
     print("=" * 50)
     print("🔄 Track 2: Python AI 冲突解决")
     print("=" * 50)
+
+    # Track 2 completes the merge after this script returns. Hosted runners do
+    # not provide a Git identity, so configure one before that commit is made.
+    for key, value in (("user.name", "lobehubbot"), ("user.email", "i@lobehub.com")):
+        returncode, _, stderr = run_git_command(f'git config {key} "{value}"')
+        if returncode != 0:
+            print(f"❌ Git 作者配置失败: {stderr.strip()}")
+            return 1
     
     # 检查是否有冲突
     conflicted_files = get_conflicted_files()
