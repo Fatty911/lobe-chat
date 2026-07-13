@@ -29,6 +29,7 @@ env:
 
 jobs:
   add-e2e-tests:
+    if: github.repository == 'lobehub/lobehub'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
