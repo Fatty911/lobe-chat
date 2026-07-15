@@ -26,7 +26,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding: 32px;
 
     @media (max-width: 767px) {
-      min-height: 79svh;
+      min-height: 74svh;
       padding: 20px 16px;
     }
   `,

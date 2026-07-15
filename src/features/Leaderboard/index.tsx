@@ -27,6 +27,15 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   header: css`
     flex-wrap: wrap;
     margin-block-end: 16px;
+
+    @media (max-width: 767px) {
+      flex-wrap: nowrap;
+      margin-block-end: 8px;
+
+      > :not(:first-child) {
+        display: none;
+      }
+    }
   `,
   tableWrapper: css`
     overflow-x: auto;
