@@ -9,6 +9,7 @@ import { LeaderboardPanel } from '@/features/Leaderboard';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     display: flex;
+    width: 100%;
     min-height: 100vh;
     background: ${cssVar.colorBgLayout};
 
