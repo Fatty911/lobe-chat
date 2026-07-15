@@ -11,6 +11,10 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     display: flex;
     min-height: 100vh;
     background: ${cssVar.colorBgLayout};
+
+    @media (max-width: 767px) {
+      display: block;
+    }
   `,
   left: css`
     display: flex;
@@ -19,18 +23,28 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     justify-content: center;
 
     padding: 32px;
+
+    @media (max-width: 767px) {
+      min-height: 100svh;
+      padding: 24px 16px;
+    }
   `,
   right: css`
     display: flex;
     flex-direction: column;
 
-    width: 420px;
+    width: min(620px, 45vw);
+    min-width: 480px;
     border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
-  `,
-  mobile: css`
-    display: none;
+
+    @media (max-width: 767px) {
+      width: 100%;
+      min-width: 0;
+      border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+      border-inline-start: 0;
+    }
   `,
 }));
 

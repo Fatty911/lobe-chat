@@ -23,17 +23,49 @@ interface CacheEntry {
 
 let cache: CacheEntry | null = null;
 
-// Chinese AI providers
-const CHINESE_PROVIDERS = new Set([
-  'MoonshotAI', 'Zhipu', 'Alibaba', 'DeepSeek', 'Tencent',
-  'Bytedance', 'ByteDance', 'Stepfun', 'Minimax', 'MiniMax',
-  'InternLM', '01.AI', 'Shengshu', 'Baidu', 'Xiaomi',
+const normalizeOrgKey = (organization: string) =>
+  organization.toLowerCase().replaceAll(/[^a-z0-9]/g, '');
+
+const ORGANIZATION_ALIASES = new Map<string, string>([
+  ['spacexai', 'SpaceXAI / xAI'],
+  ['spacex', 'SpaceXAI / xAI'],
+  ['xai', 'SpaceXAI / xAI'],
+  ['zai', 'Z.ai / Zhipu'],
+  ['zhipu', 'Z.ai / Zhipu'],
+  ['zhipuai', 'Z.ai / Zhipu'],
 ]);
+
+const CHINESE_PROVIDER_KEYS = new Set([
+  '01ai',
+  'alibaba',
+  'baichuan',
+  'baidu',
+  'bytedance',
+  'deepseek',
+  'iflytek',
+  'internlm',
+  'minimax',
+  'moonshot',
+  'moonshotai',
+  'sensetime',
+  'shengshu',
+  'shanghaiailab',
+  'stepfun',
+  'tencent',
+  'xiaomi',
+  'zai',
+  'zaizhipu',
+  'zhipu',
+  'zhipuai',
+]);
+
+const CHINESE_MODEL_PATTERN =
+  /^(?:abab|chatglm|deepseek|doubao|ernie|glm|hunyuan|internlm|kimi|mimo|minimax|qwen|qwq|step-|yi-)/i;
 
 // Known org prefixes for parsing
 const KNOWN_ORGS = [
   'Anthropic', 'MoonshotAI', 'Bytedance', 'ByteDance', 'Tencent', 'Meta',
-  'Google', 'OpenAI', 'xAI', 'Zhipu', 'Baidu', 'Alibaba', 'DeepSeek',
+  'Google', 'OpenAI', 'SpaceXAI', 'xAI', 'Z.ai', 'Zhipu', 'Baidu', 'Alibaba', 'DeepSeek',
   'Xiaomi', 'Mistral', 'Nvidia', 'Cohere', 'Stepfun', 'Minimax',
   '01.AI', 'InternLM', 'Snowflake', 'AI2', 'Databricks', 'Microsoft',
 ];
@@ -76,6 +108,42 @@ function detectOrg(model: string): string {
   return 'Other';
 }
 
+export function normalizeOrganization(organization: string, model: string): string {
+  const detected = !organization || organization === 'Other' || organization === 'Unknown'
+    ? detectOrg(model)
+    : organization.trim();
+
+  return ORGANIZATION_ALIASES.get(normalizeOrgKey(detected)) || detected;
+}
+
+export function isChineseOrganization(organization: string, model: string): boolean {
+  return CHINESE_PROVIDER_KEYS.has(normalizeOrgKey(organization)) || CHINESE_MODEL_PATTERN.test(model);
+}
+
+export function prepareLeaderboardEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+  const normalized = entries
+    .filter((entry) => entry.arena_score > 0 && entry.model.trim())
+    .map((entry, index) => {
+      const organization = normalizeOrganization(entry.organization, entry.model);
+      return {
+        ...entry,
+        is_chinese:
+          entry.is_chinese || isChineseOrganization(entry.organization, entry.model),
+        organization,
+        rank: Number(entry.rank) || index + 1,
+      };
+    })
+    .sort((a, b) => a.rank - b.rank || b.arena_score - a.arena_score);
+
+  const firstChineseIndex = normalized.findIndex((entry) => entry.is_chinese);
+  const targetCount = firstChineseIndex >= 0
+    ? Math.ceil((firstChineseIndex + 1) / 10) * 10 + 10
+    : 30;
+  const displayCount = normalized.length >= targetCount ? targetCount : normalized.length;
+
+  return normalized.slice(0, displayCount);
+}
+
 async function fetchFromSource(url: string): Promise<any> {
   try {
     const resp = await fetch(url, {
@@ -97,22 +165,24 @@ function parseApiData(data: any): LeaderboardEntry[] {
   const models = data.data || data.results || data.models || data.leaderboard || data.rows || data;
   if (!Array.isArray(models)) return [];
 
-  return models
+  const entries = models
     .filter((m: any) => m && (m.model || m.name || m.model_name || m.modelDisplayName))
     .map((m: any, i: number) => {
       const model = m.model || m.name || m.model_name || m.modelDisplayName || '';
-      const org =
+      const rawOrganization =
         m.organization || m.org || m.provider || m.modelOrganization || detectOrg(model);
+      const organization = normalizeOrganization(rawOrganization, model);
       return {
         arena_score: Math.round(m.rating ?? m.arena_score ?? m.score ?? m.elo ?? 0),
-        organization: org,
-        is_chinese: CHINESE_PROVIDERS.has(org),
+        organization,
+        is_chinese: isChineseOrganization(rawOrganization, model),
         model: String(model).trim(),
         rank: Number(m.rank) || i + 1,
       };
     })
-    .filter(e => e.arena_score > 0)
-    .slice(0, 50);
+    .filter(e => e.arena_score > 0);
+
+  return prepareLeaderboardEntries(entries);
 }
 
 async function fetchLiveData(): Promise<LeaderboardEntry[] | null> {
@@ -133,7 +203,7 @@ function getLocalFallback(): { data: LeaderboardEntry[]; date: string } | null {
     const raw = localStorage.getItem(LS_FALLBACK_KEY);
     const date = localStorage.getItem(LS_FALLBACK_DATE_KEY);
     if (raw && date) {
-      return { data: JSON.parse(raw), date };
+      return { data: prepareLeaderboardEntries(JSON.parse(raw)), date };
     }
   } catch {}
   return null;
