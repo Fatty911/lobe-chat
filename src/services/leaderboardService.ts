@@ -2,8 +2,8 @@
 // Ported from Relay_AI_Chats services/leaderboardService.ts
 // Fetches from lmarena.ai LMSYS Chatbot Arena
 
-const LS_FALLBACK_KEY = 'leaderboard_fallback_data';
-const LS_FALLBACK_DATE_KEY = 'leaderboard_fallback_date';
+const LS_FALLBACK_KEY = 'leaderboard_fallback_data_v2';
+const LS_FALLBACK_DATE_KEY = 'leaderboard_fallback_date_v2';
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 export interface LeaderboardEntry {
@@ -120,6 +120,36 @@ export function isChineseOrganization(organization: string, model: string): bool
   return CHINESE_PROVIDER_KEYS.has(normalizeOrgKey(organization)) || CHINESE_MODEL_PATTERN.test(model);
 }
 
+export function getChineseProductLabel(organization: string, model: string): string | null {
+  if (!isChineseOrganization(organization, model)) return null;
+
+  const organizationKey = normalizeOrgKey(normalizeOrganization(organization, model));
+  const modelKey = model.toLowerCase();
+
+  if (organizationKey === 'alibaba' || /^(?:qwen|qwq)/i.test(modelKey)) return '千问';
+  if (organizationKey === 'zaizhipu' || /^(?:chatglm|glm)/i.test(modelKey)) return '智谱清言';
+  if (organizationKey === 'baidu' || /^ernie/i.test(modelKey)) return '文心一言';
+  if (
+    organizationKey === 'moonshot' ||
+    organizationKey === 'moonshotai' ||
+    /^kimi/i.test(modelKey)
+  ) {
+    return 'Kimi';
+  }
+  if (organizationKey === 'tencent' || /^hunyuan/i.test(modelKey)) return '腾讯元宝';
+  if (organizationKey === 'bytedance' || /^(?:doubao|seed)/i.test(modelKey)) return '豆包';
+  if (organizationKey === 'xiaomi' || /^mimo/i.test(modelKey)) return '小米 MiMo';
+  if (organizationKey === 'deepseek' || /^deepseek/i.test(modelKey)) return 'DeepSeek';
+  if (organizationKey === 'minimax' || /^(?:abab|minimax)/i.test(modelKey)) return '海螺 AI';
+  if (organizationKey === '01ai' || /^yi-/i.test(modelKey)) return '万知';
+  if (organizationKey === 'stepfun' || /^step-/i.test(modelKey)) return '阶跃 AI';
+  if (organizationKey === 'iflytek') return '讯飞星火';
+  if (organizationKey === 'internlm' || organizationKey === 'shanghaiailab') return '书生浦语';
+  if (organizationKey === 'baichuan') return '百小应';
+
+  return null;
+}
+
 export function prepareLeaderboardEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
   const normalized = entries
     .filter((entry) => entry.arena_score > 0 && entry.model.trim())
@@ -145,19 +175,20 @@ export function prepareLeaderboardEntries(entries: LeaderboardEntry[]): Leaderbo
 }
 
 async function fetchFromSource(url: string): Promise<any> {
-  try {
-    const resp = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json',
-      },
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!resp.ok) return null;
-    return await resp.json();
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (resp.ok) return await resp.json();
+    } catch {}
   }
+
+  return null;
 }
 
 function parseApiData(data: any): LeaderboardEntry[] {

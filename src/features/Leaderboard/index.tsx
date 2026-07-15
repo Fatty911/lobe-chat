@@ -6,7 +6,11 @@ import { createStaticStyles } from 'antd-style';
 import { type CSSProperties, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getLeaderboardData, type LeaderboardEntry } from '@/services/leaderboardService';
+import {
+  getChineseProductLabel,
+  getLeaderboardData,
+  type LeaderboardEntry,
+} from '@/services/leaderboardService';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
@@ -120,6 +124,17 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
     background: ${cssVar.colorError};
   `,
+  productBadge: css`
+    margin-inline-start: 4px;
+    padding-block: 0;
+    padding-inline: 5px;
+    border-radius: 4px;
+
+    font-size: 10px;
+    color: ${cssVar.colorInfo};
+
+    background: ${cssVar.colorInfoBg};
+  `,
   skeleton: css`
     margin-block-end: 8px;
   `,
@@ -145,6 +160,10 @@ export const LeaderboardPanel = () => {
   };
 
   const organizationLabel = (organization: string) => {
+    if (organization === 'Anthropic') return t('leaderboard.provider.anthropic');
+    if (organization === 'Meta') return t('leaderboard.provider.meta');
+    if (organization === 'Google') return t('leaderboard.provider.google');
+    if (organization === 'OpenAI') return t('leaderboard.provider.openai');
     if (organization === 'SpaceXAI / xAI') return t('leaderboard.provider.muskFamily');
     if (organization === 'Z.ai / Zhipu') return t('leaderboard.provider.zhipu');
     return organization;
@@ -187,7 +206,7 @@ export const LeaderboardPanel = () => {
         )}
         {!loading && (
           <Text style={{ fontSize: 11 }} type={'secondary'}>
-            {t('leaderboard.count', { count: data.length })}
+            {t('leaderboard.count', { count: data.length, rank: data.at(-1)?.rank || 0 })}
           </Text>
         )}
       </Flexbox>
@@ -224,30 +243,37 @@ export const LeaderboardPanel = () => {
               </tr>
             </thead>
             <tbody>
-              {data.map((entry) => (
-                <tr key={`${entry.rank}-${entry.model}`}>
-                  <td className={styles.td}>
-                    <span className={styles.rankBadge} style={rankStyle(entry.rank)}>
-                      {entry.rank}
-                    </span>
-                  </td>
-                  <td className={`${styles.td} ${styles.modelCell}`}>
-                    {entry.model}
-                    {entry.is_chinese && (
-                      <span className={styles.cnBadge}>{t('leaderboard.tag.cn')}</span>
-                    )}
-                    <span className={styles.mobileOrganization}>
+              {data.map((entry) => {
+                const productLabel = getChineseProductLabel(entry.organization, entry.model);
+
+                return (
+                  <tr key={`${entry.rank}-${entry.model}`}>
+                    <td className={styles.td}>
+                      <span className={styles.rankBadge} style={rankStyle(entry.rank)}>
+                        {entry.rank}
+                      </span>
+                    </td>
+                    <td className={`${styles.td} ${styles.modelCell}`}>
+                      {entry.model}
+                      {entry.is_chinese && (
+                        <span className={styles.cnBadge}>{t('leaderboard.tag.cn')}</span>
+                      )}
+                      {productLabel && (
+                        <span className={styles.productBadge}>{productLabel}</span>
+                      )}
+                      <span className={styles.mobileOrganization}>
+                        {organizationLabel(entry.organization)}
+                      </span>
+                    </td>
+                    <td className={`${styles.td} ${styles.organizationColumn}`}>
                       {organizationLabel(entry.organization)}
-                    </span>
-                  </td>
-                  <td className={`${styles.td} ${styles.organizationColumn}`}>
-                    {organizationLabel(entry.organization)}
-                  </td>
-                  <td className={`${styles.td} ${styles.scoreCell}`}>
-                    {entry.arena_score}
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className={`${styles.td} ${styles.scoreCell}`}>
+                      {entry.arena_score}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {data.length === 0 && <div className={styles.empty}>{t('leaderboard.empty')}</div>}
