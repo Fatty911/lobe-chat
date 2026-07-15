@@ -14,13 +14,14 @@ import {
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
+    box-sizing: border-box;
     overflow-y: auto;
     max-height: 100vh;
     padding: 24px;
 
     @media (max-width: 767px) {
-      overflow-y: visible;
-      max-height: none;
+      overflow-y: auto;
+      max-height: 72svh;
       padding: 16px 12px 24px;
     }
   `,
