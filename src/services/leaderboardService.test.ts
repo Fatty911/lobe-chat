@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { LeaderboardEntry } from './leaderboardService';
 import {
+  getChineseProductLabel,
   isChineseOrganization,
   normalizeOrganization,
   prepareLeaderboardEntries,
@@ -19,6 +20,13 @@ describe('leaderboard organization normalization', () => {
     expect(isChineseOrganization('Z.ai', 'glm-5.2')).toBe(true);
     expect(isChineseOrganization('Unknown', 'chatglm-4')).toBe(true);
   });
+
+  it('maps Chinese providers to their domestic products', () => {
+    expect(getChineseProductLabel('Alibaba', 'qwen3.7-max-preview')).toBe('千问');
+    expect(getChineseProductLabel('Z.ai', 'glm-5.2')).toBe('智谱清言');
+    expect(getChineseProductLabel('Baidu', 'ernie-5.1')).toBe('文心一言');
+    expect(getChineseProductLabel('Anthropic', 'claude-opus-4.8')).toBeNull();
+  });
 });
 
 const createEntries = (length: number, chineseRank: number): LeaderboardEntry[] =>
@@ -31,6 +39,13 @@ const createEntries = (length: number, chineseRank: number): LeaderboardEntry[] 
   }));
 
 describe('prepareLeaderboardEntries', () => {
+  it('shows 30 entries when the first Chinese model is rank 16', () => {
+    const prepared = prepareLeaderboardEntries(createEntries(200, 16));
+
+    expect(prepared).toHaveLength(30);
+    expect(prepared.at(-1)?.rank).toBe(30);
+  });
+
   it('extends through the next full ten after the first Chinese model', () => {
     const entries = createEntries(50, 25);
 
