@@ -25,16 +25,16 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     padding: 32px;
 
     @media (max-width: 767px) {
-      min-height: 100svh;
-      padding: 24px 16px;
+      min-height: 79svh;
+      padding: 20px 16px;
     }
   `,
   right: css`
     display: flex;
     flex-direction: column;
 
-    width: min(620px, 45vw);
-    min-width: 480px;
+    width: clamp(520px, 46vw, 880px);
+    min-width: min(520px, 46vw);
     border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};

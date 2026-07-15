@@ -53,6 +53,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     font-weight: 600;
     color: ${cssVar.colorTextSecondary};
     text-align: start;
+    white-space: nowrap;
 
     background: ${cssVar.colorBgContainer};
 
@@ -80,7 +81,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     overflow-wrap: anywhere;
   `,
   organizationColumn: css`
-    width: 168px;
+    width: clamp(180px, 14vw, 260px);
+    min-width: 180px;
+    white-space: nowrap;
 
     @media (max-width: 767px) {
       display: none;
@@ -109,9 +112,18 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     font-weight: 700;
   `,
   scoreCell: css`
+    width: 96px;
+    min-width: 86px;
+
     font-family: monospace;
     color: ${cssVar.colorPrimary};
     text-align: end;
+    white-space: nowrap;
+
+    @media (max-width: 767px) {
+      width: 70px;
+      min-width: 64px;
+    }
   `,
   cnBadge: css`
     margin-inline-start: 4px;
