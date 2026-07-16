@@ -94,6 +94,17 @@ Open this URL to develop locally against the production backend (app.lobehub.com
 - Commit messages: prefix with gitmoji
 - Branch format: `<type>/<feature-name>`
 
+#### Codex Cloud publication for the Fatty911 fork
+
+When a Codex Cloud task is running against `Fatty911/lobe-chat` and the user has not explicitly prohibited remote publication:
+
+- A local commit or output from the `make_pr` tool is not remote publication.
+- If the current branch is `work`, detached, or the remote default branch, create a unique task branch before publishing. Never push directly to the remote default branch under this rule.
+- Push the task branch with `git push --set-upstream origin HEAD`. Treat a nonzero exit as a blocking failure.
+- Check for an existing open pull request with the same head branch. Update it when present; otherwise create one with `gh pr create`, using an existing remote branch as the base.
+- Before reporting success, verify that the remote branch SHA equals `git rev-parse HEAD`, then verify the pull request URL, state, head, base, and head SHA with `gh pr view`.
+- If any publication or verification step fails, report the exact failure. Never describe generated PR metadata as a created pull request.
+
 ### Package Management
 
 - `pnpm` for dependency management

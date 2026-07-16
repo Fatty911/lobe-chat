@@ -9,12 +9,16 @@ import { LeaderboardPanel } from '@/features/Leaderboard';
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     display: flex;
+    overflow: hidden;
     width: 100%;
-    min-height: 100vh;
+    height: 100%;
+    min-height: 0;
     background: ${cssVar.colorBgLayout};
 
     @media (max-width: 767px) {
       display: block;
+      overflow: visible;
+      height: auto;
     }
   `,
   left: css`
@@ -22,6 +26,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     flex: 1;
     align-items: center;
     justify-content: center;
+    min-height: 0;
 
     padding: 32px;
 
@@ -34,6 +39,8 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     display: flex;
     flex-direction: column;
 
+    height: 100%;
+    min-height: 0;
     width: clamp(520px, 46vw, 880px);
     min-width: min(520px, 46vw);
     border-inline-start: 1px solid ${cssVar.colorBorderSecondary};
@@ -41,6 +48,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorBgContainer};
 
     @media (max-width: 767px) {
+      height: auto;
       width: 100%;
       min-width: 0;
       border-block-start: 1px solid ${cssVar.colorBorderSecondary};
