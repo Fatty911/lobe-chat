@@ -15,13 +15,17 @@ import {
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
     box-sizing: border-box;
-    overflow-y: auto;
-    max-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+    min-height: 0;
     padding: 24px;
 
     @media (max-width: 767px) {
-      overflow-y: auto;
-      max-height: 72svh;
+      display: block;
+      overflow: visible;
+      height: auto;
       padding: 16px 12px 24px;
     }
   `,
@@ -39,7 +43,15 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
     }
   `,
   tableWrapper: css`
-    overflow-x: auto;
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding-block-end: 8px;
+
+    @media (max-width: 767px) {
+      overflow: visible;
+      padding-block-end: 0;
+    }
   `,
   table: css`
     border-collapse: collapse;
@@ -234,7 +246,7 @@ export const LeaderboardPanel = () => {
       </Flexbox>
 
       {loading ? (
-        <Flexbox gap={8}>
+        <Flexbox className={styles.tableWrapper} gap={8}>
           {Array.from({ length: 10 }).map((_, i) => (
             <Skeleton.Input
               active

@@ -16,10 +16,12 @@ import { styles } from './style';
 const AuthContainer: FC<PropsWithChildren> = ({ children }) => {
   const isDarkMode = useIsDark();
   return (
-    <Flexbox className={styles.outerContainer} height={'100%'} padding={8} width={'100%'}>
+    <Flexbox className={styles.outerContainer} padding={8} width={'100%'}>
       <Flexbox
-        className={cx(isDarkMode ? styles.innerContainerDark : styles.innerContainerLight)}
-        height={'100%'}
+        className={cx(
+          styles.innerContainer,
+          isDarkMode ? styles.innerContainerDark : styles.innerContainerLight,
+        )}
         width={'100%'}
       >
         <Flexbox horizontal align={'center'} padding={16} width={'100%'}>
@@ -27,7 +29,7 @@ const AuthContainer: FC<PropsWithChildren> = ({ children }) => {
             <ProductLogo size={40} />
           </a>
         </Flexbox>
-        <Center height={'100%'} padding={16} width={'100%'}>
+        <Center className={styles.content} padding={16} width={'100%'}>
           {children}
         </Center>
         <Flexbox horizontal align={'center'} justify={'space-between'} padding={16} width={'100%'}>
