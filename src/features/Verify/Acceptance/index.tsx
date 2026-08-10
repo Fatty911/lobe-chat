@@ -1873,15 +1873,13 @@ const AcceptancePage = memo<AcceptancePageProps>(
           so no extra close button here (two would overlap). */}
         {showHistory && (
           <Drawer
-            destroyOnHidden
             noHeader
             containerMaxWidth={'100%'}
             open={reportRound !== null}
             placement={'right'}
             width={'min(960px, 92vw)'}
             styles={{
-              body: { height: '100%', padding: 0 },
-              bodyContent: { height: '100%', minHeight: 0, overflow: 'hidden' },
+              bodyContent: { height: '100%', minHeight: 0, overflow: 'hidden', padding: 0 },
             }}
             onClose={() => openReport(null)}
           >
