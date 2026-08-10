@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync.yml'
+      - 'custom_scripts/resolve_upstream_conflicts.py'
 
 env:
   MODELSCOPE_API_KEY: ${{ secrets.MODELSCOPE_API_KEY }}
@@ -34,6 +39,10 @@ jobs:
         id: track1
         run: |
           set -euo pipefail
+          # Configure git author BEFORE any commit so sync commits never fail
+          git config user.name "lobehubbot"
+          git config user.email "i@lobehub.com"
+
           git remote add upstream https://github.com/lobehub/lobehub.git 2>/dev/null || true
           git fetch upstream main
 
@@ -60,8 +69,27 @@ jobs:
           # Try merge with no-commit first to detect conflicts
           if git merge upstream/main --no-commit --no-edit 2>/dev/null; then
             echo "Merge succeeded (no conflicts)"
-            git commit -m "chore: sync upstream [auto-sync]" || true
-            git push origin main
+            # Edge case: merge produced no staged changes -> already in sync
+            if git diff --cached --quiet; then
+              echo "Merge produced no changes (already in sync)"
+              echo "status=up_to_date" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+            BEFORE_COMMIT=$(git rev-parse HEAD)
+            git commit -m "chore: sync upstream [auto-sync]" || {
+              echo "track1_failed=true" >> $GITHUB_OUTPUT
+              exit 1
+            }
+            AFTER_COMMIT=$(git rev-parse HEAD)
+            if [ "$BEFORE_COMMIT" = "$AFTER_COMMIT" ]; then
+              echo "Commit produced no new HEAD (aborting to avoid silent no-op)"
+              echo "track1_failed=true" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+            git push origin main || {
+              echo "track1_failed=true" >> $GITHUB_OUTPUT
+              exit 1
+            }
             echo "status=merged" >> $GITHUB_OUTPUT
             exit 0
           else
@@ -117,13 +145,14 @@ jobs:
       # ===== Fallback: Create Issue =====
       - name: Create issue if unresolved
         if: steps.track2.outputs.track2_failed == 'true' || failure()
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const conflictedFiles = await exec.getExecOutput('git', ['diff', '--name-only', '--diff-filter=U']);
             const files = conflictedFiles.stdout || 'unknown';
-            const isSignin = files.includes('auth/signin') || files.includes('Leaderboard') || files.includes('leaderboardService');
+            const isSignin = files.includes('auth/signin') || files.includes('Leaderboard') || files.includes('leaderboardService') || files.includes('apps/server/src/services/leaderboard');
 
             let body = `Upstream sync produced merge conflicts and AI auto-resolution failed.\n\nConflicted files:\n\`\`\`\n${files}\n\`\`\`\n`;
 

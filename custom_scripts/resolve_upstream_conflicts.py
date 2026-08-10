@@ -34,6 +34,11 @@ SIGNIN_LEADERBOARD_PATTERNS = [
     r"src/services/leaderboardService",
     r"src/spa/router/authRouter",
     r"locales/.*/auth\.json",
+    # 上游 2026-07 目录重命名后的新路径（src/server/services -> apps/server/src/services）
+    r"apps/server/src/services/leaderboard",
+    r"src/server/services/leaderboard",
+    r"apps/server/src/services/__tests__/leaderboard",
+    r"packages/shared-tool-ui/src/AskUserQuestion/",
 ]
 
 LEADERBOARD_CONTEXT = """
@@ -79,11 +84,30 @@ def run_git_command(cmd: str, cwd: str = ".") -> Tuple[int, str, str]:
         return -1, "", "Command timed out"
 
 def get_conflicted_files() -> List[str]:
-    """获取冲突文件列表"""
-    returncode, stdout, stderr = run_git_command("git diff --name-only --diff-filter=U")
+    """获取冲突文件列表。
+
+    使用 `git ls-files -u` 直接读取 index 中的 unmerged 条目（stage 1/2/3），
+    不依赖 `git diff --diff-filter=U`——后者在部分 runner 环境下会漏报
+    （2026-08 实测：GitHub Actions runner 上 merge 冲突后返回空列表，
+    导致 AI 冲突解决从未被真正触发）。
+    """
+    returncode, stdout, stderr = run_git_command("git ls-files -u")
     if returncode != 0:
+        print(f"  ⚠️ git ls-files -u 失败 (rc={returncode}): {stderr.strip()}")
         return []
-    return [f.strip() for f in stdout.strip().split('\n') if f.strip()]
+    files: List[str] = []
+    for line in stdout.split('\n'):
+        if '\t' not in line:
+            continue
+        path = line.split('\t', 1)[1].strip()
+        if path and path not in files:
+            files.append(path)
+    if not files:
+        # 兜底：diff-filter=U（兼容旧 git 行为）
+        returncode, stdout, stderr = run_git_command("git diff --name-only --diff-filter=U")
+        if returncode == 0:
+            files = [f.strip() for f in stdout.strip().split('\n') if f.strip()]
+    return files
 
 def get_conflict_content(file_path: str) -> str:
     """读取冲突文件内容"""
@@ -252,6 +276,14 @@ def main():
     print("🔄 Track 2: Python AI 冲突解决")
     print("=" * 50)
 
+    # 诊断信息（帮助未来排障）
+    try:
+        print(f"  [debug] cwd={os.getcwd()}")
+    except Exception:
+        pass
+    rc_dbg, out_dbg, _ = run_git_command("git --version")
+    print(f"  [debug] git version: {out_dbg.strip() if rc_dbg == 0 else f'rc={rc_dbg}'}")
+
     # Track 2 completes the merge after this script returns. Hosted runners do
     # not provide a Git identity, so configure one before that commit is made.
     for key, value in (("user.name", "lobehubbot"), ("user.email", "i@lobehub.com")):
@@ -321,13 +353,17 @@ def main():
             except Exception as e:
                 print(f"  ❌ 写入失败: {e}")
         else:
-            # AI 解决失败，使用简单合并
+            if file_is_leaderboard:
+                # 排行榜移植区域：AI 失败时禁止 simple_merge（会丢 fork 移植功能），
+                # 保留冲突标记并标记失败，交人工处理
+                print(f"  ❌ AI 解决失败且文件在排行榜保护区，跳过该文件（保留冲突标记，需人工处理）")
+                continue
+            # 非保护区 AI 失败，使用简单合并
             resolved_content = simple_merge(file_path, content)
             try:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(resolved_content)
-                status = "⚠️ 使用简单合并" + (" (登录页区域，注意保留排行榜)" if file_is_leaderboard else "")
-                print(f"  {status}")
+                print(f"  ⚠️ 使用简单合并（保留上游内容）")
                 resolved_count += 1
             except Exception as e:
                 print(f"  ❌ 写入失败: {e}")
