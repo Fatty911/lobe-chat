@@ -1,4 +1,3 @@
-```tsx
 'use client';
 
 import { Flexbox, Hotkey, Icon, KeyMapEnum, Text, TextArea } from '@lobehub/ui';
@@ -259,4 +258,3 @@ export const AskUserQuestionView = memo<AskUserQuestionViewProps>((props) => {
 AskUserQuestionView.displayName = 'AskUserQuestionView';
 
 export default AskUserQuestionView;
-```

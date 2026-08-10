@@ -7,7 +7,6 @@ import {
   Center,
   copyToClipboard,
   DraggablePanel,
-  Drawer,
   Empty,
   Flexbox,
   Icon,
@@ -15,7 +14,7 @@ import {
   Text,
 } from '@lobehub/ui';
 import type { DropdownItem } from '@lobehub/ui/base-ui';
-import { Button, DropdownMenu, Select, toast } from '@lobehub/ui/base-ui';
+import { Button, Drawer, DropdownMenu, Select, toast } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx, useResponsive } from 'antd-style';
 import dayjs from 'dayjs';
 import {
@@ -43,7 +42,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 
@@ -53,6 +52,7 @@ import { openCheckEditModal } from '@/features/Conversation/ChatInput/VerifyTray
 import { openGoalModal } from '@/features/Conversation/ChatInput/VerifyTray/GoalModal';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
+import { useSingleton } from '@/hooks/useSingleton';
 // The workspace-scoped mutate — a bare `import { mutate } from 'swr'` misses
 // every `useClientDataSWR` subscriber (augmented keys + custom cache provider).
 import { mutate as globalMutate } from '@/libs/swr';
@@ -84,7 +84,7 @@ import { EMPTY_ID_SET, setAggregateEntry } from './expandState';
 import FeedbackDrawer, { type FeedbackListEntry } from './FeedbackDrawer';
 import { acceptanceFocusedLayout, acceptanceScrollLayout } from './layout';
 import LedgerPanel, { type AcceptanceRound } from './LedgerPanel';
-import { openAcceptModal, openRejectModal } from './modals';
+import { openAcceptModal, openGroupFeedbackModal, openRejectModal } from './modals';
 import { acceptanceCheckPath, acceptanceOverviewPath } from './routes';
 import { getAcceptanceStatusActions } from './statusActions';
 import TopicPanel from './TopicPanel';
@@ -387,7 +387,7 @@ const AcceptancePage = memo<AcceptancePageProps>(
     // Which aggregates have had their one-time defaults (expand/collapse + filter)
     // applied. A Set, not a single id, so returning to an already-seeded aggregate
     // does NOT re-apply defaults and clobber the toggles the user made.
-    const seededIdsRef = useRef<Set<string>>(new Set());
+    const seededIds = useSingleton(() => new Set<string>());
     const [highlightRound, setHighlightRound] = useState<number | null>(null);
     const [ledgerExpand, setLedgerExpand] = useState(!isEmbedded);
     const [topicPanelOpen, setTopicPanelOpen] = useState(false);
@@ -413,9 +413,13 @@ const AcceptancePage = memo<AcceptancePageProps>(
     }, [isNarrowViewport]);
     // A focused check is the review workspace: evidence gets the horizontal
     // room, while the round ledger remains available from the corner toggle.
-    useEffect(() => {
+    // Adjusted during render, not in an effect, so selecting a check commits in
+    // one render pass instead of render → effect → full second render.
+    const [prevFocusedCheckId, setPrevFocusedCheckId] = useState(focusedCheckId);
+    if (prevFocusedCheckId !== focusedCheckId) {
+      setPrevFocusedCheckId(focusedCheckId);
       if (focusedCheckId) setLedgerExpand(false);
-    }, [focusedCheckId]);
+    }
     const closeTopicPanel = useCallback(() => {
       setTopicPanelOpen(false);
       closeTopicDrawer();
@@ -430,6 +434,23 @@ const AcceptancePage = memo<AcceptancePageProps>(
       setTopicPanelOpen(true);
       setLedgerExpand(true);
     }, [data, openTopicDrawer]);
+
+    /**
+     * An agent judge argues by running, not by writing a paragraph — so the
+     * reviewable form of its verdict is its own conversation. Resolve the
+     * verifier operation to its topic and open the same drawer used for the
+     * origin run.
+     */
+    const openVerifierTrace = useCallback(
+      async (verifierOperationId: string) => {
+        const resolved = await verifyService.getVerifierThread(verifierOperationId);
+        const topicId = resolved?.topicId;
+        if (!topicId) return;
+        openTopicDrawer(topicId, { title: t('acceptance.checks.viewTrace') });
+        setTopicPanelOpen(true);
+      },
+      [openTopicDrawer, t],
+    );
     const [reportRound, setReportRound] = useState<AcceptanceRound | null>(null);
     // `?r=<roundIndex>` deep-links one round's full report — a durable
     // per-round snapshot URL (standalone page only; the portal embed rides the
@@ -462,15 +483,15 @@ const AcceptancePage = memo<AcceptancePageProps>(
 
     // Exceptions and visually-evidenced checks start expanded (P-08) — a check
     // still awaiting the user's review shows its evidence (screenshots included)
-    // up front, not folded away. Seeded once per aggregate (see `seededIdsRef`),
+    // up front, not folded away. Seeded once per aggregate (see `seededIds`),
     // and only after its checks have arrived, so the user's own toggling is never
     // overwritten and an aggregate whose checks stream in a beat late still seeds.
     // A check the user already accepted is settled business and stays folded
     // regardless of its evidence; groups accepted in full start collapsed too.
     useEffect(() => {
       if (!data || data.checks.length === 0) return;
-      if (seededIdsRef.current.has(acceptanceId ?? '')) return;
-      seededIdsRef.current.add(acceptanceId ?? '');
+      if (seededIds.has(acceptanceId ?? '')) return;
+      seededIds.add(acceptanceId ?? '');
       setExpanded(
         new Set(
           data.checks
@@ -513,6 +534,7 @@ const AcceptancePage = memo<AcceptancePageProps>(
       t,
       isEmbedded,
       urlFilterRaw,
+      seededIds,
       setSearchParams,
       setExpanded,
       setCollapsedGroups,
@@ -533,6 +555,121 @@ const AcceptancePage = memo<AcceptancePageProps>(
         uncertain: checks.filter((check) => check.state === 'uncertain').length,
       };
     }, [data]);
+
+    const acceptanceRecordId = data?.acceptance.id;
+    const runAction = useCallback(
+      async (action: () => Promise<unknown>) => {
+        try {
+          setPending(true);
+          setActionError(undefined);
+          await action();
+          await mutate();
+          // The list panel derives its glyph from the same status — a decision
+          // here must not leave a stale icon there until a hard refresh.
+          void globalMutate(verifyKeys.acceptances());
+          return true;
+        } catch (cause) {
+          setActionError(cause instanceof Error ? cause.message : t('acceptance.actionError'));
+          return false;
+        } finally {
+          setPending(false);
+        }
+      },
+      [mutate, t],
+    );
+
+    // Per-check user review — accept settles a check for good; reject records
+    // the feedback the next verify round reads.
+    const handleReview = useCallback(
+      async (input: CheckReviewInput) => {
+        if (!acceptanceRecordId) return false;
+        return runAction(() => verifyService.reviewChecks({ id: acceptanceRecordId, ...input }));
+      },
+      [runAction, acceptanceRecordId],
+    );
+
+    // Group-scoped feedback — for concerns that belong to no single check (the
+    // checks themselves may be accepted) yet must reach the next round.
+    const handleGroupFeedback = useCallback(
+      async (category: string, comment: string, fileIds: string[]) => {
+        if (!acceptanceRecordId) return false;
+        return runAction(() =>
+          verifyService.addGroupFeedback({
+            category,
+            comment,
+            fileIds: fileIds.length > 0 ? fileIds : undefined,
+            id: acceptanceRecordId,
+          }),
+        );
+      },
+      [runAction, acceptanceRecordId],
+    );
+
+    // The decision bar's global note — the same group-feedback channel, aimed
+    // at the uncategorized bucket ('' targets the whole delivery).
+    const handleAddGlobalComment = useCallback(() => {
+      openGroupFeedbackModal({
+        description: t('acceptance.bar.addCommentDescription'),
+        groupLabel: t('acceptance.feedback.global'),
+        onConfirm: (comment, fileIds) => handleGroupFeedback('', comment, fileIds),
+        title: t('acceptance.bar.addComment'),
+      });
+    }, [handleGroupFeedback, t]);
+
+    const gotoRound = useCallback((round: number) => {
+      setHighlightRound(round);
+      setLedgerExpand(true);
+    }, []);
+    const historyNavigation = useMemo(
+      () => resolveAcceptanceHistoryNavigation(Boolean(data?.isOwner), gotoRound),
+      [data?.isOwner, gotoRound],
+    );
+
+    const handleToggleGroup = useCallback(
+      (key: string) =>
+        setCollapsedGroups((previous) => {
+          const next = new Set(previous);
+          if (next.has(key)) next.delete(key);
+          else next.add(key);
+          return next;
+        }),
+      [setCollapsedGroups],
+    );
+    const handleToggleGroupItems = useCallback(
+      (ids: string[], open: boolean) =>
+        setExpanded((previous) => {
+          const next = new Set(previous);
+          for (const id of ids) {
+            if (open) next.add(id);
+            else next.delete(id);
+          }
+          return next;
+        }),
+      [setExpanded],
+    );
+    const handleToggleItem = useCallback(
+      (id: string) =>
+        setExpanded((previous) => {
+          const next = new Set(previous);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        }),
+      [setExpanded],
+    );
+
+    // Group-scoped feedback lives on each round's decision detail — flatten the
+    // chain into the derived per-entry view (roundIndex from the carrying run).
+    const groupFeedbackEntries = useMemo(
+      () =>
+        (data?.rounds ?? []).flatMap((round) =>
+          (round.run.decisionDetail?.groupFeedback ?? []).map((entry) => ({
+            ...entry,
+            roundIndex: round.run.roundIndex ?? 0,
+          })),
+        ),
+      [data],
+    );
 
     if (isLoading)
       return (
@@ -592,14 +729,6 @@ const AcceptancePage = memo<AcceptancePageProps>(
       );
     };
     const currentRound = rounds.at(-1);
-    // Group-scoped feedback lives on each round's decision detail — flatten the
-    // chain into the derived per-entry view (roundIndex from the carrying run).
-    const groupFeedbackEntries = rounds.flatMap((round) =>
-      (round.run.decisionDetail?.groupFeedback ?? []).map((entry) => ({
-        ...entry,
-        roundIndex: round.run.roundIndex ?? 0,
-      })),
-    );
     // The latest coding round's context — rendered with the latest report card
     // (it describes what THAT round verified), not as aggregate-level identity.
     // A round with no scenario predates the column and is a coding round; a
@@ -690,24 +819,6 @@ const AcceptancePage = memo<AcceptancePageProps>(
                       label: t('acceptance.verdict.inProgress'),
                     };
 
-    const runAction = async (action: () => Promise<unknown>) => {
-      try {
-        setPending(true);
-        setActionError(undefined);
-        await action();
-        await mutate();
-        // The list panel derives its glyph from the same status — a decision
-        // here must not leave a stale icon there until a hard refresh.
-        void globalMutate(verifyKeys.acceptances());
-        return true;
-      } catch (cause) {
-        setActionError(cause instanceof Error ? cause.message : t('acceptance.actionError'));
-        return false;
-      } finally {
-        setPending(false);
-      }
-    };
-
     const changeAcceptanceStatus = async (status: 'accepted' | 'closed' | 'delivered') => {
       const succeeded = await runAction(() =>
         verifyService.updateAcceptanceStatus(acceptance.id, status),
@@ -746,12 +857,6 @@ const AcceptancePage = memo<AcceptancePageProps>(
       },
     );
 
-    const gotoRound = (round: number) => {
-      setHighlightRound(round);
-      setLedgerExpand(true);
-    };
-    const historyNavigation = resolveAcceptanceHistoryNavigation(isOwner, gotoRound);
-
     // Open/close the round report drawer AND mirror it to `?r=` (standalone
     // page only) so the address bar is always a copyable snapshot link for the
     // round being viewed.
@@ -768,11 +873,6 @@ const AcceptancePage = memo<AcceptancePageProps>(
         { replace: true },
       );
     };
-
-    // Per-check user review — accept settles a check for good; reject records
-    // the feedback the next verify round reads.
-    const handleReview = (input: CheckReviewInput) =>
-      runAction(() => verifyService.reviewChecks({ id: acceptance.id, ...input }));
 
     // The acceptance goal is a user-editable field — reuse the tray's goal
     // modal so both entry points write the same subject-level requirement. A
@@ -791,18 +891,6 @@ const AcceptancePage = memo<AcceptancePageProps>(
           await mutate();
         },
       });
-
-    // Group-scoped feedback — for concerns that belong to no single check (the
-    // checks themselves may be accepted) yet must reach the next round.
-    const handleGroupFeedback = (category: string, comment: string, fileIds: string[]) =>
-      runAction(() =>
-        verifyService.addGroupFeedback({
-          category,
-          comment,
-          fileIds: fileIds.length > 0 ? fileIds : undefined,
-          id: acceptance.id,
-        }),
-      );
 
     // The floating bar's one-line state + supporting line — the old banner's
     // content, relocated to where the decision actually happens.
@@ -1729,34 +1817,12 @@ const AcceptancePage = memo<AcceptancePageProps>(
                   reviewPending={pending}
                   round={roundFilter}
                   onGroupFeedback={handleGroupFeedback}
+                  onOpenTrace={openVerifierTrace}
                   onReview={handleReview}
                   onRound={historyNavigation}
-                  onToggleGroup={(key) =>
-                    setCollapsedGroups((previous) => {
-                      const next = new Set(previous);
-                      if (next.has(key)) next.delete(key);
-                      else next.add(key);
-                      return next;
-                    })
-                  }
-                  onToggleGroupItems={(ids, open) =>
-                    setExpanded((previous) => {
-                      const next = new Set(previous);
-                      for (const id of ids) {
-                        if (open) next.add(id);
-                        else next.delete(id);
-                      }
-                      return next;
-                    })
-                  }
-                  onToggleItem={(id) =>
-                    setExpanded((previous) => {
-                      const next = new Set(previous);
-                      if (next.has(id)) next.delete(id);
-                      else next.add(id);
-                      return next;
-                    })
-                  }
+                  onToggleGroup={handleToggleGroup}
+                  onToggleGroupItems={handleToggleGroupItems}
+                  onToggleItem={handleToggleItem}
                 />
               </>
             )}
@@ -1778,6 +1844,7 @@ const AcceptancePage = memo<AcceptancePageProps>(
                 subText={barTexts.subText}
                 totalCount={reviewTotal}
                 onAccept={handleAccept}
+                onAddComment={handleAddGlobalComment}
                 onCopyReview={handleCopyReview}
                 onOpenFeedback={() => setFeedbackOpen(true)}
                 onRejectComment={handleRejectComment}
@@ -1812,7 +1879,7 @@ const AcceptancePage = memo<AcceptancePageProps>(
               containerMaxWidth={'100%'}
               open={ledgerExpand}
               placement={'right'}
-              styles={{ body: { padding: 0 } }}
+              styles={{ bodyContent: { padding: 0 } }}
               width={'min(340px, 88vw)'}
               onClose={() => setLedgerExpand(false)}
             >
@@ -1836,6 +1903,7 @@ const AcceptancePage = memo<AcceptancePageProps>(
             </Drawer>
           ) : (
             <DraggablePanel
+              stableLayout
               defaultSize={{ width: 340 }}
               expand={ledgerExpand}
               minWidth={300}
@@ -1874,15 +1942,13 @@ const AcceptancePage = memo<AcceptancePageProps>(
           so no extra close button here (two would overlap). */}
         {showHistory && (
           <Drawer
-            destroyOnHidden
             noHeader
             containerMaxWidth={'100%'}
             open={reportRound !== null}
             placement={'right'}
             width={'min(960px, 92vw)'}
             styles={{
-              body: { height: '100%', padding: 0 },
-              bodyContent: { height: '100%', minHeight: 0, overflow: 'hidden' },
+              bodyContent: { height: '100%', minHeight: 0, overflow: 'hidden', padding: 0 },
             }}
             onClose={() => openReport(null)}
           >
