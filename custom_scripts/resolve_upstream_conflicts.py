@@ -38,7 +38,6 @@ SIGNIN_LEADERBOARD_PATTERNS = [
     r"apps/server/src/services/leaderboard",
     r"src/server/services/leaderboard",
     r"apps/server/src/services/__tests__/leaderboard",
-    r"packages/shared-tool-ui/src/AskUserQuestion/",
 ]
 
 LEADERBOARD_CONTEXT = """
@@ -161,7 +160,7 @@ def call_ai_api(prompt: str, model_config: Dict) -> Optional[str]:
                     {"role": "system", "content": "你是一个代码合并专家。请帮助解决Git冲突，保留两边的重要内容。只输出合并后的代码，不要解释。"},
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 4096,
+                "max_tokens": 8192,
                 "temperature": 0.1
             },
             timeout=60
@@ -170,7 +169,11 @@ def call_ai_api(prompt: str, model_config: Dict) -> Optional[str]:
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
         else:
-            print(f"API 错误: {response.status_code}")
+            try:
+                detail = response.json().get('error', response.text)[:200]
+            except Exception:
+                detail = response.text[:200]
+            print(f"API 错误: {response.status_code} ({detail})")
             return None
     except Exception as e:
         print(f"API 调用异常: {e}")
