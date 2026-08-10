@@ -219,15 +219,7 @@ def resolve_conflict_with_ai(file_path: str, content: str, model_config: Dict, h
 def get_available_model() -> Optional[Dict]:
     """获取可用的 AI 模型配置（免费优先 > Plan，只保留 AA 前 20 模型）"""
     model_configs = [
-        # 免费端点 — 只保留最强的 1 个
-        {
-            'name': 'modelscope',
-            'api_key_env': 'MODELSCOPE_API_KEY',
-            'base_url': 'https://api-inference.modelscope.cn/v1',
-            'model': 'MiniMax/MiniMax-M3'  # AA #15
-        },
-        # 付费 — 只保留 AA 前 20
-        # 单家 Coding Plan: glm-5.2 (AA #7)
+        # 单家 Coding Plan: glm-5.2 (AA #7) — 2026-08 实测可用
         {
             'name': 'volcengine-coding-plan',
             'api_key_env': 'VOLCENGINE_CODING_PLAN_API_KEY',
@@ -371,6 +363,18 @@ def main():
             except Exception as e:
                 print(f"  ❌ 写入失败: {e}")
     
+    # 保留 fork 的 workflow 文件：上游合并会更新 .github/workflows/*，
+    # 而 GITHUB_TOKEN 无法 push 修改后的 workflow 文件（GitHub 安全限制），
+    # 因此必须恢复 fork 自己的 workflow 版本（7/12 设计，冲突路径此前漏执行）。
+    # 用显式 FORK_SHA 而非 HEAD：FF 合并时 --no-commit 会移动 HEAD，restore --source=HEAD 会失效。
+    print("\n🛡️ 恢复 fork 的 workflow 文件（上游改动不入库）...")
+    fork_sha_rc, fork_sha_out, _ = run_git_command("git rev-parse HEAD")
+    restore_rc, _, restore_err = run_git_command(
+        f"git restore --source={fork_sha_out.strip()} --staged --worktree .github/workflows"
+    )
+    if restore_rc != 0:
+        print(f"  ⚠️ 恢复 workflows 失败: {restore_err.strip()}")
+
     # 添加解决后的文件
     print("\n📦 暂存解决后的文件...")
     for file_path in conflicted_files:
