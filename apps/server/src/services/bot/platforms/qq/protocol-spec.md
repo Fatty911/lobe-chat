@@ -56,7 +56,7 @@ QQ 开放平台机器人 API 是腾讯 QQ 机器人功能的 HTTP/JSON 协议。
 
 ```json
 {
-  "access_token": "a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK",
+  "access_token": "<TOKEN_RETURNED_BY_AUTH_ENDPOINT>",
   "expires_in": "7200"
 }
 ```
@@ -256,7 +256,7 @@ QQ 机器人消息分为两类：
 curl 'https://api.sgroup.qq.com/v2/groups/A1B2C3D4E5F6/messages' \
   -X POST \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK' \
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>' \
   --data-raw '{
     "content": "你好，这是一条群聊消息。",
     "msg_type": 0,
@@ -271,7 +271,7 @@ curl 'https://api.sgroup.qq.com/v2/groups/A1B2C3D4E5F6/messages' \
 curl 'https://api.sgroup.qq.com/v2/groups/A1B2C3D4E5F6/messages' \
   -X POST \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK' \
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>' \
   --data-raw '{
     "msg_type": 2,
     "markdown": {
@@ -349,7 +349,7 @@ curl 'https://api.sgroup.qq.com/v2/groups/A1B2C3D4E5F6/messages' \
 curl 'https://api.sgroup.qq.com/channels/123456/messages' \
   -X POST \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK' \
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>' \
   --data-raw '{
     "content": "你好，这是一条频道消息。",
     "msg_id": "08e09a8305ac3e5d141a1490"
@@ -408,7 +408,7 @@ curl 'https://api.sgroup.qq.com/channels/123456/messages' \
 curl 'https://api.sgroup.qq.com/v2/users/F6A8B9C0D1E2/messages' \
   -X POST \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK' \
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>' \
   --data-raw '{
     "content": "你好，这是一条私聊消息。",
     "msg_type": 0,
@@ -496,7 +496,7 @@ curl 'https://api.sgroup.qq.com/v2/users/F6A8B9C0D1E2/messages' \
 curl 'https://api.sgroup.qq.com/dms/DMS_GUILD_ID/messages' \
   -X POST \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK' \
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>' \
   --data-raw '{
     "content": "你好，这是一条频道私信。",
     "msg_id": "08e09a8305ac3e5d141a1490"
@@ -581,7 +581,7 @@ curl 'https://api.sgroup.qq.com/dms/DMS_GUILD_ID/messages' \
 
 ```bash
 curl 'https://api.sgroup.qq.com/users/@me' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK'
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>'
 ```
 
 ## 6. 消息数据结构
@@ -931,7 +931,7 @@ Embed 是一种特殊的 Ark 消息，仅在**频道子频道**和**频道私信
 curl 'https://api.sgroup.qq.com/v2/groups/A1B2C3D4E5F6/files' \
   -X POST \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK' \
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>' \
   --data-raw '{
     "file_type": 1,
     "url": "https://example.com/image.png",
@@ -945,7 +945,7 @@ curl 'https://api.sgroup.qq.com/v2/groups/A1B2C3D4E5F6/files' \
 curl 'https://api.sgroup.qq.com/v2/groups/A1B2C3D4E5F6/messages' \
   -X POST \
   -H 'Content-Type: application/json' \
-  -H 'Authorization: QQBot a]kLm4oPqRsT.uVwXyZ_1234567890ABCdEfGhIjK' \
+  -H 'Authorization: QQBot <TOKEN_RETURNED_BY_AUTH_ENDPOINT>' \
   --data-raw '{
     "msg_type": 7,
     "media": {
